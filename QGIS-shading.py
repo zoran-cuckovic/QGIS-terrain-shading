@@ -169,16 +169,18 @@ class Shading(QgsProcessingAlgorithm):
 
         if 180 <= direction <= 360:
             indices_x = indices_x[:, ::-1]
-
-
+      
         s = direction % 90
         slope = s/45 if s < 45 else (90 - s)/45
 
         #pixel size : in diagonal
-        pixel_size = dem.GetGeoTransform()[1] + 1.414 * slope
+        pixel_size = dem.GetGeoTransform()[1] 
+        # adjust for pixel size (in diagonal)
+        pixel_size = np.sqrt(pixel_size ** 2 + (pixel_size* slope)**2)
 
-        # adjust for pixel size (in diagonal) 
-        tilt = sun_angle / 45 * pixel_size 
+              
+           # this is not 100 % correct ( ?)
+        tilt = (sun_angle / 45)  * pixel_size 
 
         off_a = indices_x + indices_y * slope 
         off_b = indices_y  + indices_x * slope
@@ -187,7 +189,7 @@ class Shading(QgsProcessingAlgorithm):
 
         if steep:
             axis = 0  
-            off = off_a 
+            off = off_a
               
             src = np.s_[indices_x [:,::-1],
                         off_b.astype(int)]
@@ -204,7 +206,10 @@ class Shading(QgsProcessingAlgorithm):
             mx_temp = np.zeros((np.max(off_a).astype(int)+1, 
                                 np.max(indices_y)+1))
                                 
-                     
+       
+        # distances are x + y , have to divide by two to get pixel distance on x
+        off -= off * (slope/2)
+        
         mx_z += off[:, ::-1] * tilt
         
         # garbage collection not working (memory leak ???)
@@ -219,7 +224,6 @@ class Shading(QgsProcessingAlgorithm):
      
         out = mx_temp[src] ; mx_temp,  src = None, None# memory leaks in QGIS ???
         
-        print (out.shape)
         # Update the progress bar
         feedback.setProgress(80)
           
@@ -249,7 +253,7 @@ class Shading(QgsProcessingAlgorithm):
             mx_temp = (i - np.maximum.accumulate(i2, axis=axis)) * pixel_size
             out2 = mx_temp[src]
 
-
+             
         # writing output 
         driver = gdal.GetDriverByName('GTiff')
         ds = driver.Create(output_model, out.shape[1], out.shape[0], 1 
