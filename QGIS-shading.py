@@ -91,13 +91,13 @@ class Shading(QgsProcessingAlgorithm):
         
         self.addParameter(QgsProcessingParameterNumber(
             self.DIRECTION,
-            self.tr('Sun direction'),
+            self.tr('Sun direction (0 to 360°)'),
             1, 315, False, 0, 360))
             
         self.addParameter(QgsProcessingParameterNumber(
             self.ANGLE,
-            self.tr('Sun angle'),
-            1, 10, False, 0, 90))
+            self.tr('Sun angle (max = 45°)'),
+            1, 10, False, 0, 45))
             
         self.addParameter(QgsProcessingParameterNumber(
             self.SMOOTH,
@@ -169,13 +169,7 @@ class Shading(QgsProcessingAlgorithm):
 
         if 180 <= direction <= 360:
             indices_x = indices_x[:, ::-1]
-            
-        #https://stackoverflow.com/questions/8083943/rotate-numpy-2d-array/45769682#45769682
 
-        #If you have an angle (A), in radians, in the range -Pi to Pi,
-        #then convert it to a vector (V) with:
-        #V.x = cos(A)
-        #V.y = sin(A)
 
         s = direction % 90
         slope = s/45 if s < 45 else (90 - s)/45
@@ -184,7 +178,7 @@ class Shading(QgsProcessingAlgorithm):
         pixel_size = dem.GetGeoTransform()[1] + 1.414 * slope
 
         # adjust for pixel size (in diagonal) 
-        tilt = sun_angle / 90 * pixel_size 
+        tilt = sun_angle / 45 * pixel_size 
 
         off_a = indices_x + indices_y * slope 
         off_b = indices_y  + indices_x * slope
