@@ -157,7 +157,7 @@ class Shading(QgsProcessingAlgorithm):
         distance_weighting = 0          
 
         dem = gdal.Open(elevation_model.source())
-        mx_z = dem.ReadAsArray()
+        mx_z = dem.ReadAsArray().astype(float)
 
         #should handle better NoData !!
         mx_z[np.isnan(mx_z)]=0
@@ -169,7 +169,7 @@ class Shading(QgsProcessingAlgorithm):
 
         if 180 <= direction <= 360:
             indices_x = indices_x[:, ::-1]
-      
+            
         s = direction % 90
         slope = s/45 if s < 45 else (90 - s)/45
 
@@ -252,8 +252,7 @@ class Shading(QgsProcessingAlgorithm):
             i2 = np.copy(i); i2[mx_temp < 0] = 0
             mx_temp = (i - np.maximum.accumulate(i2, axis=axis)) * pixel_size
             out2 = mx_temp[src]
-
-             
+       
         # writing output 
         driver = gdal.GetDriverByName('GTiff')
         ds = driver.Create(output_model, out.shape[1], out.shape[0], 1 
