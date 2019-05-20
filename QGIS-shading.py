@@ -178,9 +178,7 @@ class Shading(QgsProcessingAlgorithm):
         # adjust for pixel size (in diagonal)
         pixel_size = np.sqrt(pixel_size ** 2 + (pixel_size* slope)**2)
 
-              
-           # this is not 100 % correct ( ?)
-        tilt = (sun_angle / 45)  * pixel_size 
+        tilt= np.tan(np.radians(sun_angle)) * pixel_size 
 
         off_a = indices_x + indices_y * slope 
         off_b = indices_y  + indices_x * slope
