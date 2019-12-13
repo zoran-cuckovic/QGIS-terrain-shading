@@ -1,4 +1,4 @@
-# QShader: a QGIS plugin for modelling natural illumination over digital terrain models. 
+# Terrain shading: a QGIS plugin for modelling natural illumination over digital terrain models. 
 
 **Current version: 0.1**
 
@@ -23,7 +23,7 @@ Plugin code can then be extracted in a new folder inside the plugins folder (you
             [other files and folders…]
 
 
-Finally, there is a version made as QGIS script, which can be downloaded [here](_____) and installed as a QGIS script. 
+Finally, there is a version made as QGIS script, which can be downloaded [here](__SCRIPT BRANCH___) and installed as a QGIS script. 
 
 ## Manual
 
@@ -40,7 +40,7 @@ Two *analysis types* are available. The *shadow depth* will calculate the vertic
 
 ## Remarks 
 
-For cartographic uses, the best result is achieved when varying levels of transparency according to shadow depth or length. You can download and apply a QGIS style definition files from [Style library on GitHub repository](https://github.com/zoran-cuckovic/QGIS-raster-shading/tree/styles).
+For cartographic uses, the best result is achieved when varying levels of transparency according to shadow depth or length. You can download and apply **QGIS style definition** files from the [style library on GitHub repository](https://github.com/zoran-cuckovic/QGIS-raster-shading/tree/styles).
 REPO / FILE  ?raw=true
 
 The algorithm output may contain some sharp transitions or visible artefacts, especially when made for rugged terrain, over noisy elevation models, such as Lidar data, or over small scale models of urban architecture. A simple 3x3 average (smoothing) filter should be applied in these cases.  
