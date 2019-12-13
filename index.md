@@ -51,3 +51,14 @@ The algorithm output may contain some sharp transitions or visible artefacts, es
 You can signal an issue [on GitHub](https://github.com/zoran-cuckovic/QGIS-raster-shading/issues).
 
 For further information see also: [LandscapeArcaheology.org/2019/qgis-shadows](https://LandscapeArchaeology.org/2019/qgis-shadows/).
+
+## Support & donations
+
+If you this peice of software makes you a happier cartographer, please consider supporting the developpement by making a small contribution.
+
+<form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top">
+<input type="hidden" name="cmd" value="_s-xclick" />
+<input type="hidden" name="hosted_button_id" value="PM4YE7ZTPGLAU" />
+<input type="image" src="https://www.paypalobjects.com/en_US/FR/i/btn/btn_donateCC_LG.gif" border="0" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Donate with PayPal button" />
+<img alt="" border="0" src="https://www.paypal.com/en_FR/i/scr/pixel.gif" width="1" height="1" />
+</form>
