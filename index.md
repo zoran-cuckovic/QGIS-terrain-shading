@@ -40,13 +40,13 @@ Finally, there is a version made as QGIS script, which can be downloaded from th
 
 ## Remarks 
 
-For cartographic uses, the best result is achieved when varying levels of transparency according to shadow depth or length. You can download and apply **QGIS style definition** files from the [style library in this repository](https://github.com/zoran-cuckovic/QGIS-raster-shading/tree/styles).
+For cartographic uses, the best result is achieved when varying levels of transparency according to shadow depth or length. You can download and apply **QGIS style definition** files from the [style library in this repository](https://github.com/zoran-cuckovic/QGIS-terrain-shading/tree/styles).
 
 The algorithm output may contain some sharp transitions or visible artefacts, especially when made for rugged terrain, over noisy elevation models, such as Lidar data, or over small scale models of urban architecture. A simple 3x3 average (smoothing) filter should be applied in these cases.  
 
 ## More information
 
-You can signal an issue here (Issues tab).
+You can signal an issue in [GitHub repository](https://github.com/zoran-cuckovic/QGIS-raster-shading/issues).
 
 For further information see also: [LandscapeArcaheology.org/2019/qgis-shadows](https://LandscapeArchaeology.org/2019/qgis-shadows/).
 
