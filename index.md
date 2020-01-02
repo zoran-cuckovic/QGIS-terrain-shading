@@ -33,26 +33,32 @@ Finally, there is a version made as QGIS script, which can be downloaded from th
 
 *Sun angle* marks the vertical position of the Sun. 
 
+*Smooth filter* is a simple 3x3 average filter which eliminates noise and sharp transitions in the output. 
+
 <!-- Two *analysis types* are available. The *shadow depth* will calculate the vertical difference between shadow surface and underlying terrain, while the *shadow length* will calculate the horizontal reach of the shadow. The reach is expressed as horizontal distance and not as slope length from the occlusion point to shadow tip.    -->
 
-*Data output* is in the same raster format as the input dataset. Illuminated areas, i.e. thous without shadows, are assigned "NoData" value for shadow depth model. 
+*Data output* is in the same raster format as the input dataset.
 
 
 ## Remarks 
 
 For cartographic uses, the best result is achieved when varying levels of transparency according to shadow depth or length. You can download and apply **QGIS style definition** files from the [style library in this repository](https://github.com/zoran-cuckovic/QGIS-terrain-shading/tree/styles).
 
-The algorithm output may contain some sharp transitions or visible artefacts, especially when made for rugged terrain, over noisy elevation models, such as Lidar data, or over small scale models of urban architecture. A simple 3x3 average (smoothing) filter should be applied in these cases.  
+<!--
+The algorithm output may contain some sharp transitions or visible artefacts, especially when made for rugged terrain, over noisy elevation models, such as Lidar data, or over small scale models of urban architecture. A simple 3x3 average (smoothing) filter should be applied in these cases.   
+-->
 
 ## More information
 
-You can signal an issue in [GitHub repository](https://github.com/zoran-cuckovic/QGIS-raster-shading/issues).
+For tutorials and in-depth discussion see [LandscapeArchaeology.org/2019/qgis-shadows](https://LandscapeArchaeology.org/2019/qgis-shadows/).
 
-For further information see also: [LandscapeArcaheology.org/2019/qgis-shadows](https://LandscapeArchaeology.org/2019/qgis-shadows/).
+Style library can be found in the [GitHub repo](https://github.com/zoran-cuckovic/QGIS-terrain-shading/tree/styles).
+
+You can signal an issue in [GitHub repository](https://github.com/zoran-cuckovic/QGIS-raster-shading/issues).
 
 ## Support & donations
 
-If you this peice of software makes you a happier cartographer, please consider supporting the developpement by making a small contribution.
+If you this piece of software makes you a happier cartographer, please consider supporting the developpement by making a small contribution.
 
 <form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top">
 <input type="hidden" name="cmd" value="_s-xclick" />
