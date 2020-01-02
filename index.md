@@ -7,6 +7,7 @@
 **Repository and download: [github.com/zoran-cuckovic/QGIS-terrain-shading](https://github.com/zoran-cuckovic/QGIS-terrain-shading)**
 
 ![FIGURE SHADOWS](/"Dalmacija bis.jpg")
+
 ## Installation
 
 The algorithm is available in the official QGIS plugin repository and can be installed as usual (In QGIS go to Plugins -> Manage and install … ). Be sure to enable experimental plugins. 
