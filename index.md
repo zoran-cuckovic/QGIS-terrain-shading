@@ -60,7 +60,7 @@ You can signal an issue in [GitHub repository](https://github.com/zoran-cuckovic
 
 ## Support & donations
 
-If you this piece of software makes you a happier cartographer, please consider supporting the developpement by making a small contribution.
+If this piece of software makes you a happier cartographer, please consider supporting its developpement by making a small contribution.
 
 <form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top">
 <input type="hidden" name="cmd" value="_s-xclick" />
