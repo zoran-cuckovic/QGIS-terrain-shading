@@ -41,9 +41,7 @@ The pluging currently features two algorithms: shadow depth and ambient occlusio
 
 <!-- Two *analysis types* are available. The *shadow depth* will calculate the vertical difference between shadow surface and underlying terrain, while the *shadow length* will calculate the horizontal reach of the shadow. The reach is expressed as horizontal distance and not as slope length from the occlusion point to shadow tip.    -->
 
-**Remarks** 
-
-For cartographic uses, the best result is achieved when varying levels of transparency according to shadow depth or length. You can download and apply **QGIS style definition** files from the [style library in this repository](https://github.com/zoran-cuckovic/QGIS-terrain-shading/tree/styles).
+**Remarks** -- For cartographic uses, the best result is achieved when varying levels of transparency according to shadow depth or length. You can download and apply **QGIS style definition** files from the [style library in this repository](https://github.com/zoran-cuckovic/QGIS-terrain-shading/tree/styles).
 
 <!--
 The algorithm output may contain some sharp transitions or visible artefacts, especially when made for rugged terrain, over noisy elevation models, such as Lidar data, or over small scale models of urban architecture. A simple 3x3 average (smoothing) filter should be applied in these cases.   
@@ -55,8 +53,7 @@ The algorithm output may contain some sharp transitions or visible artefacts, es
 
 *Denoise* will apply a 3x3 average filter, as above. 
 
-**Remarks** 
-Algorithm calculation time is directly dependant on the radius of analysis.
+**Remarks** -- Algorithm calculation time is directly dependant on the radius of analysis.
 For more information on scientific concepts behind ambient occlusion, see the [post on LandscapeArchaeology.org](https://LandscapeArchaeology.org/2020/ambient-occlusion)
 
 
