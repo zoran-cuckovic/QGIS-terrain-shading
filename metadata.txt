@@ -3,8 +3,8 @@
 [general]
 name=Terrain shading
 qgisMinimumVersion=3.0
-description=Natural shadows for terrain visualisation.
-version=0.1
+description=Natural shading for terrain visualisation.
+version=0.2
 author=Zoran Čučković
 email=cuckovic.zoran@gmail.com
 
@@ -20,7 +20,7 @@ repository=https://github.com/zoran-cuckovic/QGIS-terrain-shading
 # changelog=
 
 # Tags are comma separated with spaces allowed
-tags=raster, hillshade
+tags=raster, hillshade, shadows, ambient occlusion, sky-view factor
 
 homepage=https://zoran-cuckovic.github.io/QGIS-terrain-shading
 category=Raster Analysis
