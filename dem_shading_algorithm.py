@@ -1,14 +1,6 @@
 # -*- coding: utf-8 -*-
 
 """
-TODO / NO WGS !! NOT ALLOWED !!
-TODO / SOFT errors !! not breaking
-feedback not updated -> hang for large datasets
-CRASH : on settings in Procesing = plugin not loaded/unloaded properly !!
-
-TODO : check agains r.sun in GRass
-
-BUG : last chunk not calculated !!
 
 /***************************************************************************
  DemShading
@@ -47,7 +39,10 @@ from qgis.core import (QgsProcessing,
                        QgsProcessingParameterRasterDestination,
                         QgsProcessingParameterBoolean,
                       QgsProcessingParameterNumber,
-                       QgsProcessingParameterEnum
+                       QgsProcessingParameterEnum,
+
+                       QgsProcessingUtils,
+                       QgsRasterBandStats
                         )
 from processing.core.ProcessingConfig import ProcessingConfig
 
@@ -71,6 +66,10 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
     OUTPUT = 'OUTPUT'
 
     ANALYSIS_TYPES = ['Depth', 'Reach']
+
+    output_model = None #for post processing
+    
+
 
     def initAlgorithm(self, config):
         """
@@ -164,7 +163,7 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
             feedback.reportError(err, fatalError = True)
             raise QgsProcessingException(err)
 
-        output_model = self.parameterAsOutputLayer(parameters,self.OUTPUT,context)
+        self.output_model = self.parameterAsOutputLayer(parameters,self.OUTPUT,context)
 
         direction = self.parameterAsDouble(parameters,self.DIRECTION, context)
         sun_angle =self.parameterAsDouble(parameters,self.ANGLE, context)
@@ -210,7 +209,7 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
    
         # writing output beforehand, to prepare for data dumps
         driver = gdal.GetDriverByName('GTiff')
-        ds = driver.Create(output_model, xsize,ysize, 1, gdal.GDT_Float32)
+        ds = driver.Create(self.output_model, xsize,ysize, 1, gdal.GDT_Float32)
         ds.SetProjection(dem.GetProjection())
         ds.SetGeoTransform(dem.GetGeoTransform())
         
@@ -320,10 +319,36 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
 
             counter += 1
             feedback.setProgress( 100 * chunk * counter / (xsize if steep else ysize))
-            
+               
         ds = None
         
-        return {self.OUTPUT: output_model}
+        return {self.OUTPUT: self.output_model}
+
+    def postProcessAlgorithm(self, context, feedback):
+        
+        import os
+        output = QgsProcessingUtils.mapLayerFromString(self.output_model, context)
+        
+        provider = output.dataProvider()
+        #print (provider.hasStatistics(1, QgsRasterBandStats.All))                                                #constant, 16                            
+        stats = provider.bandStatistics(1,QgsRasterBandStats.All,output.extent(),0)
+        mean, sd = stats.mean, stats.stdDev
+       # minv, maxv = stats.minimumValue, stats.maximumValue 
+        
+
+        #!!  mean doesn't work when the raster contains strange values (nans I suppose?)
+        # st.dev, however, works always (??)
+        if mean > -10: path= "/styles/shading_0-50.qml"
+        elif mean < -30: path = "/styles/shading_0-500.qml"
+        else:  path = "/styles/shading_0-250.qml" 
+
+        path = os.path.dirname(__file__) + path
+
+        
+       
+        output.loadNamedStyle(path)
+        output.triggerRepaint()
+        return {self.OUTPUT: self.output_model}
 
     def name(self):
         """
