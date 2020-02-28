@@ -37,6 +37,7 @@ from os import path
 from PyQt5.QtGui import QIcon
 
 from .dem_shading_algorithm import DemShadingAlgorithm
+from .occlusion_algorithm import OcclusionAlgorithm
 
 
 class DemShadingProvider(QgsProcessingProvider):
@@ -45,7 +46,7 @@ class DemShadingProvider(QgsProcessingProvider):
         QgsProcessingProvider.__init__(self)
 
         # Load algorithms
-        self.alglist = [DemShadingAlgorithm()]
+        self.alglist = [DemShadingAlgorithm(), OcclusionAlgorithm()]
         
     def load(self):
 
