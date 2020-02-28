@@ -52,9 +52,9 @@ class DemShadingProvider(QgsProcessingProvider):
 
         ProcessingConfig.settingIcons[self.name()] = self.icon()
 	# Activate provider by default
-##        ProcessingConfig.addSetting(
-##            Setting(self.name(), 'DEM_SHADING_ACTIVATED',
-##                                    'Activate', True))
+        ProcessingConfig.addSetting(
+            Setting(self.name(), 'TERRAIN_SHADING_ACTIVATED',
+                                   'Activate', True))
         ProcessingConfig.addSetting(
             Setting(self.name(), 'DATA_CHUNK',
                                     'Data chunk size (megapixels)', 5))
@@ -68,16 +68,20 @@ class DemShadingProvider(QgsProcessingProvider):
         Unloads the provider. Any tear-down steps required by the provider
         should be implemented here.
         """
-        # ProcessingConfig.removeSetting('DEM_SHADING_ACTIVATED')
+        ProcessingConfig.removeSetting('TERRAIN_SHADING_ACTIVATED')
         ProcessingConfig.removeSetting('DATA_CHUNK')
 
     def loadAlgorithms(self):
         """
         Loads all algorithms belonging to this provider.
         """
-   
-        for alg in self.alglist:
-            self.addAlgorithm( alg )
+        if self.isActive():
+            for alg in self.alglist:
+                self.addAlgorithm( alg )
+
+    def isActive(self):
+        """Return True if the provider is activated and ready to run algorithms"""
+        return ProcessingConfig.getSetting('TERRAIN_SHADING_ACTIVATED')
 
     def id(self):
         """
