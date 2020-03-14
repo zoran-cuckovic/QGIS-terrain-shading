@@ -68,4 +68,4 @@ You can signal an issue in [GitHub repository](https://github.com/zoran-cuckovic
 
 ## Support & donations
 
-If this piece of software makes you a happier cartographer, express your feelings and [![ko-fi](https://www.ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/D1D41HYSW)
+If this piece of software makes you a happier cartographer, express your feelings and  [![ko-fi](https://www.ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/D1D41HYSW)
