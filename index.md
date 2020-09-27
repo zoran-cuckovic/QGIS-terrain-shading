@@ -28,10 +28,9 @@ Plugin code can then be extracted in a new folder inside the plugins folder (you
 Finally, there is a version made as QGIS script, which can be downloaded from the [script branch](https://github.com/zoran-cuckovic/QGIS-terrain-shading/tree/script) and installed as a QGIS script. 
 
 ## Manual
+Data input for both algorithms should be a digital elevation model (DEM) in raster format. Note that it has to be **projected in a metric coordinate system**. Please check the post explaining the [**problems with unprojected data (WGS84)**](https://landscapearchaeology.org/2020/wgs/), especially when considering to [open an issue](https://github.com/zoran-cuckovic/QGIS-terrain-shading/issues) in the main repository.
 
-The pluging currently features two algorithms: shadow depth and ambient occlusion. Data input for both algorithms should be a digital elevation model (DEM) in raster format. Note that it has to be **projected in a metric coordinate system**. 
-
-### Parameters for shadow depth algorithm
+### Shadow depth algorithm
 
 *Sun direction* marks the horizontal position of the Sun where 0° is on the North, 90° on the East and 270° on the West.
 
@@ -47,7 +46,7 @@ The pluging currently features two algorithms: shadow depth and ambient occlusio
 The algorithm output may contain some sharp transitions or visible artefacts, especially when made for rugged terrain, over noisy elevation models, such as Lidar data, or over small scale models of urban architecture. A simple 3x3 average (smoothing) filter should be applied in these cases.   
 -->
 
-### Parameters for ambient occlusion algorithm
+### Ambient occlusion algorithm
  
 *Radius* specifies the radius of the sphere that is analysed around each data point. 
 
@@ -56,6 +55,29 @@ The algorithm output may contain some sharp transitions or visible artefacts, es
 **Remarks** -- Algorithm calculation time is directly dependant on the radius of analysis.
 For more information on scientific concepts behind ambient occlusion, see the [post on LandscapeArchaeology.org](https://LandscapeArchaeology.org/2020/ambient-occlusion)
 
+## Hillshade 
+This algorithm calculates surface shading - hillshade - for elevation models. The method is based on [Laplacian refelctance](https://en.wikipedia.org/wiki/Lambertian_reflectance).   
+
+*Sun direction* and *sun angle* parmeters define horizontal and vertical position of the light source, where 0° is on the North, 90° on the East and 270° on the West.
+
+*Lateral and longitudinal exaggeration* introduce artifical deformations of the elevation model, in order to achieve higher shading contrast.
+
+*Contrast (gamma)* will produce darker shadows when g > 1 or lighter shadows when g < 1.
+
+*Smoothen* option is using larger search radius, producing smoother results. 
+
+**Remarks** -- Lateral exaggeration will provide some shading to features that are parallel to the light source, and would normally remain invisible.   
+
+## Terrain position index (TPI)
+Terrain position index is expressing the relative height of each elevation point within a specified radius. 
+             
+*Radius* is determing the search radius (in pixels).
+
+There are 3 <b>analysis types</b>: 1) standard TPI, 2) distance weighted and 3) height weighted. Weighted options use elevation point distance or height discrepancy as weighting factor.   
+
+*Denoise* option is applying a simple 3x3 smooth filter.
+
+**Remarks** -- The weighted method is used to eliminate local variations, close to each elevation point, or to stress the maximum height difference. In general they produce less sharp results, but with improved contrast. 
 
 
 ## More information
