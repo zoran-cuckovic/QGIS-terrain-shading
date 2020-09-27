@@ -55,7 +55,7 @@ The algorithm output may contain some sharp transitions or visible artefacts, es
 **Remarks** -- Algorithm calculation time is directly dependant on the radius of analysis.
 For more information on scientific concepts behind ambient occlusion, see the [post on LandscapeArchaeology.org](https://LandscapeArchaeology.org/2020/ambient-occlusion)
 
-## Hillshade 
+### Hillshade 
 This algorithm calculates surface shading - hillshade - for elevation models. The method is based on [Laplacian refelctance](https://en.wikipedia.org/wiki/Lambertian_reflectance).   
 
 *Sun direction* and *sun angle* parmeters define horizontal and vertical position of the light source, where 0° is on the North, 90° on the East and 270° on the West.
@@ -68,7 +68,7 @@ This algorithm calculates surface shading - hillshade - for elevation models. Th
 
 **Remarks** -- Lateral exaggeration will provide some shading to features that are parallel to the light source, and would normally remain invisible.   
 
-## Terrain position index (TPI)
+### Terrain position index (TPI)
 Terrain position index is expressing the relative height of each elevation point within a specified radius. 
              
 *Radius* is determing the search radius (in pixels).
