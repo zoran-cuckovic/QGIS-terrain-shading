@@ -27,10 +27,6 @@ __author__ = 'Zoran Čučković'
 __date__ = '2019-06-05'
 __copyright__ = '(C) 2019 by Zoran Čučković'
 
-# This will get replaced with a git SHA1 when you do a git archive
-
-__revision__ = '$Format:%H$'
-
 from PyQt5.QtCore import QCoreApplication
 from qgis.core import (QgsProcessing,
                        QgsProcessingException,
@@ -48,6 +44,7 @@ from processing.core.ProcessingConfig import ProcessingConfig
 
 import gdal
 import numpy as np
+from .modules.helpers import window_loop, filter3
 
 class DemShadingAlgorithm(QgsProcessingAlgorithm):
     """
@@ -108,42 +105,6 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
         Here is where the processing itself takes place.
         """
 
-        def window_loop (shape, chunk, axis = 0, reverse = False, overlap = 0):
-            """
-            Construct a frame to extract chunks of data from gdal
-            (and to insert them properly to a numpy matrix)
-            """
-            xsize, ysize = shape if axis==0 else shape[::-1]
-
-            if reverse :
-                steps = np.arange(xsize // chunk, -1, -1 )
-                begin = xsize
-            else: 
-                steps = np.arange(1, xsize // chunk +2 )
-                begin =0
-
-            x, y, x_off, y_off = 0,0, xsize, ysize
-
-            for step in steps:
-
-                end = min(int(chunk * step), xsize)
-                if reverse :  x, x_off = end, begin - end
-                else:  x, x_off = begin, end - begin
-
-                if overlap and x >= overlap : x -= overlap * int(step)
-
-                begin = end
-                    
-                if x_off < chunk :
-                    in_view = np.s_[:,: x_off] if not axis else np.s_[: x_off, :]
-                else:
-                    in_view = np.s_[:]
-
-                if not axis : gdal_take =(x,y, x_off, y_off)
-                else: gdal_take = (y, x, y_off, x_off)
-
-                yield in_view, gdal_take
-        
         # 1) -------------- INPUT -----------------
         elevation_model= self.parameterAsRasterLayer(parameters,self.INPUT, context)
 
@@ -173,11 +134,11 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
         # 2)   --------------- ORIENTATION AND DIMENSIONS -----------------
         steep =  (45 <= direction <= 135 or 225 <= direction <= 315)
 
-
         s = direction % 90
         if s > 45: s= 90-s
                      
-        slope = np.tan(np.radians(s  ))# matrix shear slope
+        slope = np.tan(np.radians(s ))# matrix shear slope
+        tilt= np.tan(np.radians(sun_angle)) 
 
         dem = gdal.Open(elevation_model.source())       
             
@@ -186,13 +147,7 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
         # assuming one band dem !
         nodata = dem.GetRasterBand(1).GetNoDataValue()
         
-        pixel_size = dem.GetGeoTransform()[1] 
-        # adjust for pixel rotation (pixel diagonal = 45°)
-        # (diagonal is clipped by light path, under right angle,
-        # which means it becomes the adjacent, and the pixel size the hypothenuse.)
-        pixel_size *= np.cos(np.radians(s))
-        
-        tilt= np.tan(np.radians(sun_angle)) 
+        pixel_size = dem.GetGeoTransform()[1]      
         
         chunk = int(ProcessingConfig.getSetting('DATA_CHUNK')) * 1000000
         chunk = min(chunk // (ysize if steep else xsize), (xsize if steep else ysize))
@@ -232,27 +187,26 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
         if steep:
             axis = 0
             # construct a slope to simulate sun angle  
-            # elevations will be draped over this 2D slope            
-            off = off_a[:, ::-1]#indices_y * slope + indices_x[:, ::-1]   
+            # elevations will be draped over this slope            
+            off = off_a[:, ::-1]  
             
             src_y = indices_x [:,::-1]
             src_x = np.round(off_b).astype(int)          
             
         else:
             axis = 1
-            off = off_b[:, ::-1]#indices_x[:,::-1] * slope + indices_y  
+            off = off_b[:, ::-1]  
 
             src_x = indices_y
             src_y = np.round(off_a).astype(int)
           
-        src = np.s_[src_y, src_x]
-
-        # Distance to slope's perpendicular is (x + y)/2 * root(2) for 45°
-        # because where x = y we have a square with a*root(2) diagonal
-        # However, in a rotated pixel grid, the slope is cutting through pixel diagonals
-        # so we take cosinus (pixel_size) to get this shortened distance
-        off *= pixel_size * tilt
-         
+        src = np.s_[src_y, src_x]        
+        
+        # x + y gives horizontal distance on x (!)
+        # for orhtogonal distance to slope prependicular, 
+        # we take cosine (given x+y is hypothenuse)
+        off *= pixel_size * np.cos(np.radians(s)) * tilt
+        
         # create a matrix to hold the sheared matrix 
         mx_temp = np.zeros(((np.max(src_y)+1), np.max(src_x)+1))
         
@@ -261,22 +215,23 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
         # carrying lines from one chunk to the next (fussy...)
         if steep:        
             l = np.s_[-1  ,  : ysize ]
-            f= np.s_[0  , t_x - ysize : ]            
+            f = np.s_[0  , t_x - ysize : ]            
         else:
             l = np.s_[t_y - xsize :  , -1 ]
             f = np.s_[:xsize, 0   ]
             
         last_line = np.zeros(( ysize if steep else xsize))
-
+        
       # 4 -----   LOOP THOUGH DATA CHUNKS AND CALCULATE -----------------
         counter = 0   
-        for dem_view, gdal_coords in window_loop ( 
+        for dem_view, gdal_coords, unused_out, unused_gdal_out in window_loop ( 
             shape = (xsize, ysize), 
             chunk = chunk,
             axis = not steep, 
             reverse = rev_x if steep else rev_y,
-            overlap = 1) :
-
+            overlap= 0,
+            offset = -1) :
+      
             mx_z[dem_view]=dem.ReadAsArray(*gdal_coords).astype(float)
                 
             # should handle better NoData !!
@@ -287,8 +242,10 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
             mx_temp[src] = mx_z + off
                         
             mx_temp[f] += -last_line # shadows have negative values, so *-1   
-            #accumulate maximum shadow depths
+        
+	    #accumulate maximum shadow depths
             mx_temp -= np.maximum.accumulate(mx_temp, axis= axis)
+	
             # first line has shadow od zero depth (nothing to accum), so copy from previous chunk
             mx_temp[f] = last_line 
             
@@ -296,25 +253,10 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
 
             out = mx_temp[src] 
             
-            if smooth :  
+            if smooth: out = filter3(out)
                 
-                v=[ [np.s_[:-1, :], np.s_[1:, :]],
-                    [np.s_[:, :-1], np.s_[: , 1:]],
-                    [np.s_[:-1, 1:], np.s_[1:, :-1]],
-                    [np.s_[:-1, :-1], np.s_[1:, 1:]]  ]
-                
-               # creating matrices is EXPENSIVE - to optimise...
-                mx_a = np.copy(out)
-                mx_count = np.ones(out.shape)# 1 for the center pixel
-                
-                for a,b in v: 
-                    mx_a[a] += out[b]; mx_count[a]+=1        
-                    mx_a[b] += out[a]; mx_count[b]+=1
-#                
-                out = mx_a/mx_count
-           
-            out[mask]=np.nan # ; out[ out >=0]=np.nan
-            
+            out[mask]=np.nan 
+
             ds.GetRasterBand(1).WriteArray(out[dem_view], * gdal_coords[:2])
 
             counter += 1
@@ -330,22 +272,17 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
         output = QgsProcessingUtils.mapLayerFromString(self.output_model, context)
         
         provider = output.dataProvider()
-        #print (provider.hasStatistics(1, QgsRasterBandStats.All))                                                #constant, 16                            
+                                                                               
         stats = provider.bandStatistics(1,QgsRasterBandStats.All,output.extent(),0)
         mean, sd = stats.mean, stats.stdDev
        # minv, maxv = stats.minimumValue, stats.maximumValue 
-        
 
-        #!!  mean doesn't work when the raster contains strange values (nans I suppose?)
-        # st.dev, however, works always (??)
         if mean > -10: path= "/styles/shading_0-50.qml"
         elif mean < -30: path = "/styles/shading_0-500.qml"
         else:  path = "/styles/shading_0-250.qml" 
 
         path = os.path.dirname(__file__) + path
 
-        
-       
         output.loadNamedStyle(path)
         output.triggerRepaint()
         return {self.OUTPUT: self.output_model}
@@ -366,24 +303,6 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
         user-visible display of the algorithm name.
         """
         return self.tr(self.name())
-
-    # no need for groups
-##    def group(self):
-##        """
-##        Returns the name of the group this algorithm belongs to. This string
-##        should be localised.
-##        """
-##        return self.tr(self.groupId())
-##
-##    def groupId(self):
-##        """
-##        Returns the unique ID of the group this algorithm belongs to. This
-##        string should be fixed for the algorithm, and must not be localised.
-##        The group id should be unique within each provider. Group id should
-##        contain lowercase alphanumeric characters only and no spaces or other
-##        formatting characters.
-##        """
-##        return 'Shading'
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)
