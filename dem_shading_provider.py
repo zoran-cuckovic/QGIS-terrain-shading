@@ -50,7 +50,6 @@ class DemShadingProvider(QgsProcessingProvider):
         # Load algorithms
         self.alglist =[DemShadingAlgorithm(),
                         HillshadeAlgorithm(),
-                        LaplacianAlgorithm(),
                         OcclusionAlgorithm(),
                         TpiAlgorithm()]
         
