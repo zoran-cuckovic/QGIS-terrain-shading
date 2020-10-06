@@ -19,6 +19,8 @@
  ***************************************************************************/
 """
 
+# ========= TODO : BETTER HANDLE BORDERS
+
 __author__ = 'Zoran Čučković'
 __date__ = '2020-02-05'
 __copyright__ = '(C) 2020 by Zoran Čučković'
@@ -48,6 +50,7 @@ from processing.core.ProcessingConfig import ProcessingConfig
 
 import gdal
 import numpy as np
+from .modules.helpers import view, window_loop
 
 from qgis.core import QgsMessageLog # for testing
 
@@ -83,10 +86,6 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
                 self.tr('Digital elevation model')
             ) )
         
-##        self.addParameter(QgsProcessingParameterNumber(
-##            self.DIRECTION,
-##            self.tr('Direction (0 to 360°)'),
-##            1, 315, False, 0, 360))
         self.addParameter(QgsProcessingParameterEnum (
             self.ANALYSIS_TYPE,
             self.tr('Analysis type'),
@@ -114,97 +113,6 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
         Here is where the processing itself takes place.
         """
 
-        def view (offset_y, offset_x, shape, step=1, edge=0):
-            """            
-            Function returning two matching numpy views for moving window routines.
-            - offset_y and offset_x refer to the shift in relation to the analysed (central) cell 
-            - size_y and size_x refer to the size of the data matrix (not of the window!)
-            - view_in is the shifted view and view_out is the position of central cells
-            """
-            size_y, size_x = shape
-
-            size_y -= edge; size_x -= edge
-             
-            x = abs(offset_x) 
-            y = abs(offset_y) 
-         
-            x_in = slice(x + edge , size_x, step) 
-            x_out = slice(edge, size_x - x, step)
-
-         
-            y_in = slice(y + edge, size_y, step)
-            y_out = slice(edge, size_y - y, step)
-         
-            # the swapping trick    
-            if offset_x < 0: x_in, x_out = x_out, x_in                                 
-            if offset_y < 0: y_in, y_out = y_out, y_in
-         
-            # return window view (in) and main view (out)
-            return np.s_[y_in, x_in], np.s_[y_out, x_out]
-
-
-        def window_loop (shape, chunk, axis = 0, reverse = False, overlap = 0):
-            """
-            Construct a frame to extract chunks of data from gdal
-            (and to insert them properly to a numpy matrix)
-            """
-            xsize, ysize = shape if axis==0 else shape[::-1]
-
-            if reverse :
-                steps = np.arange(xsize // chunk, -1, -1 )
-                begin = xsize
-            else: 
-                steps = np.arange(1, xsize // chunk +2 )
-                begin =0
-
-            x, y, x_off, y_off = 0,0, xsize, ysize
-
-            for step in steps:
-
-                end = min(int(chunk * step), xsize)
-                
-                if reverse :  x, x_off = end, begin - end
-                else:         x, x_off = begin, end - begin
-
-                begin = end
-                
-               # ov = overlap * int(step)
-                ov = overlap
-
-                ov_left = ov if x > ov else x
-                ov_right = ov if (x + x_off + ov < xsize) else (xsize -(x + x_off))
-
-                x_in = x - ov_left
-                #this is an offset from x_in !!, not coords
-                x_in_off = x_off + ov_right + ov_left
-
-               
-                if not axis : gdal_take =(x_in, y, x_in_off, y_off)
-                else: gdal_take = (y, x_in, y_off, x_in_off)
-              
-                    #AXIS SWAP : cannot be handled as transposition,
-                    # we need precise coords for GDAL
-                in_view = np.s_[:,: x_in_off] if not axis else np.s_[: x_in_off, :]
-
-                x_out = x if ov_left == ov else 0
-
-                x_out_off = x_off + (ov_left if ov_left < ov else 0) + (ov_right if ov_right < ov else 0) 
-
-                if not axis : gdal_put =(x_out, y, x_out_off, y_off)
-                else: gdal_put = (y, x_out, y_off, x_out_off)
-                
-                #todo !! off nije isti za view i za GDAL !!
-                sx = slice(0 if ov_left < ov else ov , x_out_off + ov_left + (ov_right if ov_right < ov else 0))
-
-                out_view = np.s_[:, sx] if not axis else np.s_[sx , :]
-          
-                yield in_view, gdal_take, out_view, gdal_put
-
-
-            
-        # 1) -------------- INPUT -----------------
-        
-        
         elevation_model= self.parameterAsRasterLayer(parameters,self.INPUT, context)
 
         if elevation_model.crs().mapUnits() != 0 :
@@ -232,7 +140,6 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
         openness = self.parameterAsInt(parameters,self.ANALYSIS_TYPE, context)
         
         overlap = radius if not denoise else radius +1
-
              
         dem = gdal.Open(elevation_model.source())
           
@@ -243,10 +150,8 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
         
         pixel_size = dem.GetGeoTransform()[1]
         
-   
         chunk = int(ProcessingConfig.getSetting('DATA_CHUNK')) * 1000000
         chunk = min(chunk // xsize, xsize)
-
         
         # writing output to dump data chunks
         driver = gdal.GetDriverByName('GTiff')
@@ -260,17 +165,15 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
         mx_z = np.zeros( chunk_slice)
         mx_a = np.zeros(mx_z.shape)
         mx_b = np.zeros(mx_z.shape)
-                           
-
+        mx_c = np.zeros(mx_z.shape)
+                          
         counter = 0
-      
             
         for mx_view_in, gdal_take, mx_view_out, gdal_put in window_loop ( 
             shape = (xsize, ysize), 
             chunk = chunk,
             overlap = overlap) :
-
-            
+     
             mx_z[mx_view_in]= dem.ReadAsArray(*gdal_take).astype(float)
 
             if denoise :
@@ -281,36 +184,41 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
                         mx_a[view_out] += mx_z[view_in]
                     
                 mx_z = mx_a/9
-                
-                    
+                                    
             mx_b[:]=0
-            # 8 standard lines, for more : directions = cosines
+            # 8 standard lines, for more : step = 0.5; 0.25
             for dy in [-1,0,1]:
                 for dx in [-1,0,1]:
 
                     if dx == dy == 0 : continue
+
                     mx_a [:]= -9999 if openness else 0
+                    mx_c [:]= -9999 if openness else 0   
                     
                     for r in range (1, radius + 1):
 
                         view_in, view_out = view(r * dy, r * dx, mx_z.shape)
 
-                        angles = (mx_z[view_in] - mx_z[view_out]) / (r * pixel_size)  
-
-                        mx_a[view_out]= np.maximum(mx_a[view_out], angles)
+                        angles = mx_z[view_in] - mx_z[view_out]
+                        angles /= r * pixel_size 
+			
+                        np.maximum(mx_a[view_out], angles, mx_a[view_out] )
+                        np.maximum(mx_c[view_in], -angles, mx_c[view_in] )
+                        # arg 3 = result keeping array
                     
-                    mx_b += mx_a
+                    mx_b += mx_a; mx_b += mx_c
 
                     counter += 1
                     feedback.setProgress(100 * chunk * (counter/8) /  xsize)
         
             mx_b /= 8
-                   
+
+            #For speed we should do without tangent calcualtion, but it's not crucial... (and not evident)
             if openness:
-                out = 1 - (np.arctan(mx_b)/ np.pi + 0.5)
+                out = 1 - (np.arctan(mx_b) / np.pi + 0.5)
             else:
                 out = 1 - (np.arctan(mx_b)* 2 / np.pi )
-            
+
             ds.GetRasterBand(1).WriteArray(out[mx_view_out], * gdal_put[:2])
 
         ds = None
@@ -328,10 +236,7 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
         rnd = QgsSingleBandGrayRenderer(provider, 1)
         ce = QgsContrastEnhancement(provider.dataType(1))
         ce.setContrastEnhancementAlgorithm(QgsContrastEnhancement.StretchToMinimumMaximum)
-
-      #  print (provider.hasStatistics(1, QgsRasterBandStats.All))
        
-
         ce.setMinimumValue(mean-3*sd)
         ce.setMaximumValue(min(1, mean+2*sd))
 
@@ -359,24 +264,6 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
         user-visible display of the algorithm name.
         """
         return self.tr(self.name())
-
-    # no need for groups
-##    def group(self):
-##        """
-##        Returns the name of the group this algorithm belongs to. This string
-##        should be localised.
-##        """
-##        return self.tr(self.groupId())
-##
-##    def groupId(self):
-##        """
-##        Returns the unique ID of the group this algorithm belongs to. This
-##        string should be fixed for the algorithm, and must not be localised.
-##        The group id should be unique within each provider. Group id should
-##        contain lowercase alphanumeric characters only and no spaces or other
-##        formatting characters.
-##        """
-##        return 'Shading'
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)
