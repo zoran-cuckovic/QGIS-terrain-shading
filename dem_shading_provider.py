@@ -36,8 +36,10 @@ from processing.core.ProcessingConfig import Setting, ProcessingConfig
 from os import path
 from PyQt5.QtGui import QIcon
 
-from .dem_shading_algorithm import DemShadingAlgorithm
+from .shading_algorithm import DemShadingAlgorithm
 from .occlusion_algorithm import OcclusionAlgorithm
+from .tpi_algorithm import TpiAlgorithm
+from .hillshade_algorithm import HillshadeAlgorithm
 
 
 class DemShadingProvider(QgsProcessingProvider):
@@ -46,7 +48,11 @@ class DemShadingProvider(QgsProcessingProvider):
         QgsProcessingProvider.__init__(self)
 
         # Load algorithms
-        self.alglist = [DemShadingAlgorithm(), OcclusionAlgorithm()]
+        self.alglist =[DemShadingAlgorithm(),
+                        HillshadeAlgorithm(),
+                        LaplacianAlgorithm(),
+                        OcclusionAlgorithm(),
+                        TpiAlgorithm()]
         
     def load(self):
 
