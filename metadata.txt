@@ -3,12 +3,12 @@
 [general]
 name=Terrain shading
 qgisMinimumVersion=3.0
-description=Natural shading for terrain visualisation.
-version=0.2
+description=Shading algorithms for terrain analysis and visualisation.
+version=0.3
 author=Zoran Čučković
 email=cuckovic.zoran@gmail.com
 
-about=This plugin simulates natural shadows over an elevation model (DEM), using a raytracing method.
+about=This plugin features several algoritms for the analysis and visualisation of elevation models (DEMs).
 
 tracker= https://github.com/zoran-cuckovic/QGIS-terrain-shading/issues
 repository=https://github.com/zoran-cuckovic/QGIS-terrain-shading
