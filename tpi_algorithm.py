@@ -218,7 +218,7 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
         ce = QgsContrastEnhancement(provider.dataType(1))
         ce.setContrastEnhancementAlgorithm(QgsContrastEnhancement.StretchToMinimumMaximum)
 
-        ce.setMinimumValue(mean-3*sd)
+        ce.setMinimumValue(mean-2*sd)
         ce.setMaximumValue(min(1, mean+2*sd))
 
         rnd.setContrastEnhancement(ce)
