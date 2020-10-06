@@ -6,8 +6,6 @@ Created on Tue Apr 21 12:07:10 2020
 """
 import numpy as np
 
-
-
 def view (offset_y, offset_x, shape, step=1, edge=0):
     """            
     Function returning two matching numpy views for moving window routines.
@@ -37,7 +35,7 @@ def view (offset_y, offset_x, shape, step=1, edge=0):
     return np.s_[y_in, x_in], np.s_[y_out, x_out]
 
 
-def window_loop (shape, chunk, axis = 0, reverse = False, overlap = 0):
+def window_loop (shape, chunk, axis = 0, reverse = False, overlap = 0, offset = 0):
             """
             Construct a frame to extract chunks of data from gdal
             (and to insert them properly to a numpy matrix)
@@ -59,14 +57,19 @@ def window_loop (shape, chunk, axis = 0, reverse = False, overlap = 0):
                 
                 if reverse :  x, x_off = end, begin - end
                 else:         x, x_off = begin, end - begin
-
+                
+                # move window front or back, which means only one margin will overlap
+                if (offset < 0 and x >= abs(offset)) or (
+                    offset > 0 and x <= xsize-offset) : 
+                    x += offset * int(step)
+                
                 begin = end
                 
                # ov = overlap * int(step)
                 ov = overlap
 
-                ov_left = ov if x > ov else x
-                ov_right = ov if (x + x_off + ov < xsize) else (xsize -(x + x_off))
+                ov_left = min(ov, x) # do not spill over the border
+                ov_right = min (ov, (xsize - (x + x_off)))
 
                 x_in = x - ov_left
                 #this is an offset from x_in !!, not coords
@@ -87,8 +90,8 @@ def window_loop (shape, chunk, axis = 0, reverse = False, overlap = 0):
                 if not axis : gdal_put =(x_out, y, x_out_off, y_off)
                 else: gdal_put = (y, x_out, y_off, x_out_off)
                 
-                #todo !! off nije isti za view i za GDAL !!
-                sx = slice(0 if ov_left < ov else ov , x_out_off + ov_left + (ov_right if ov_right < ov else 0))
+                sx = slice(0 if ov_left < ov else ov , 
+                           x_out_off + ov_left + (ov_right if ov_right < ov else 0))
 
                 out_view = np.s_[:, sx] if not axis else np.s_[sx , :]
           
@@ -96,13 +99,16 @@ def window_loop (shape, chunk, axis = 0, reverse = False, overlap = 0):
                 
                 
 def filter3 (raster, average=True):
-    """ A basic smooth filter in 3x3 window """ 
+    
     temp_matrix = np.zeros(raster.shape)
+    
+    if average : temp_count = np.zeros(raster.shape)
     
     for i in range(-1,2):
         for j in range(-1,2):
             view_in, view_out = view(i , j ,raster.shape)
             temp_matrix[view_out] += raster[view_in]
+            if average : temp_count[view_out] += 1
                     
-    if average: temp_matrix /= 9
+    if average: temp_matrix /= temp_count
     return temp_matrix
