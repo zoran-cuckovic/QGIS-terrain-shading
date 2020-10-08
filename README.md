@@ -1,6 +1,5 @@
-# QGIS-terrain-shading
+# Terrain shading: a QGIS plugin for modelling natural illumination over digital terrain models. 
 
-A QGIS plugin for analytical terrain visualisation. 
 
 **Repository and download: [github.com/zoran-cuckovic/QGIS-terrain-shading](https://github.com/zoran-cuckovic/QGIS-terrain-shading)**
 
@@ -28,4 +27,3 @@ For **more information** see:
 - the manual on [zoran-cuckovic.github.io/QGIS-terrain-shading](https://zoran-cuckovic.github.io/QGIS-terrain-shading) 
 - tutorials on [LandscapeArchaeology.org/2019/qgis-shadows/](https://LandscapeArchaeology.org/2019/qgis-shadows/).
 
-# Terrain shading: a QGIS plugin for modelling natural illumination over digital terrain models.
