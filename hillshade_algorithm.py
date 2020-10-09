@@ -128,7 +128,7 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
         if elevation_model.crs().mapUnits() != 0 :
             err= " \n ****** \n ERROR! \n Raster data has to be projected in a metric system!"
             feedback.reportError(err, fatalError = False)
-            raise QgsProcessingException(err)
+            # raise QgsProcessingException(err)
 
         if  round(abs(elevation_model.rasterUnitsPerPixelX()),
                     2) !=  round(abs(elevation_model.rasterUnitsPerPixelY()),2):
@@ -136,7 +136,7 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
             err= (" \n ****** \n ERROR! \n Raster pixels are irregular in shape " +
                   "(probably due to incorrect projection)!")
             feedback.reportError(err, fatalError = False)
-            raise QgsProcessingException(err)
+            # raise QgsProcessingException(err)
 
         self.output_model = self.parameterAsOutputLayer(parameters,self.OUTPUT,context)
 
