@@ -1,7 +1,7 @@
 # Mandatory items:
 
 [general]
-name=Terrain shading
+name=Terrain Shading
 qgisMinimumVersion=3.0
 description=Shading algorithms for terrain analysis and visualisation.
 version=0.3
