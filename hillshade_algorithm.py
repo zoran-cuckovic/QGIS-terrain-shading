@@ -106,7 +106,7 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterNumber(
             self.GAMMA,
             self.tr('Contrast (gamma)'),
-            1, 0.5, False, 0, 10))
+            1, 1, False, 0, 10))
 
 
         self.addParameter(QgsProcessingParameterBoolean(
