@@ -1,4 +1,4 @@
-## Introduction 
+## Test examples for QGIS Terrain Shading module
 In this repository you will find test examples for Terrain Shading algorithms. Two elevation models are provided, fine grained, Lidar derived model of Oxfordshire ([LIDAR Composite DTM 2017 - 2m](https://data.gov.uk/dataset/002d24f0-0056-4176-b55e-171ba7f0e0d5/lidar-composite-dtm-2017-2m)), and a coarse DEM for Požega Valley ([SRTM 1 arc second ](https://www.usgs.gov/centers/eros/science/usgs-eros-archive-digital-elevation-shuttle-radar-topography-mission-srtm-1-arc?qt-science_center_objects=0#qt-science_center_objects)). Elevation models are projected to OSGB 1936 (CRS:27700) and HTRS96 (CRS:3765), respectively. 
 
 ATTENTION: gamma to be removed
