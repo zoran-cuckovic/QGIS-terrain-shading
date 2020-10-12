@@ -63,7 +63,6 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
     ANGLE = 'ANGLE'
     LON_EX ='LONG_EX'
     LAT_EX = 'LAT_EX'
-    GAMMA = 'GAMMA'
     SMOOTH = 'SMOOTH'
     OUTPUT = 'OUTPUT'
 
@@ -102,12 +101,12 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
             self.LON_EX,
             self.tr('Longitudinal exaggeration'),
             1, 1, False, 0, 10))
-        
+        """
         self.addParameter(QgsProcessingParameterNumber(
             self.GAMMA,
             self.tr('Contrast (gamma)'),
             1, 1, False, 0, 10))
-
+	"""
 
         self.addParameter(QgsProcessingParameterBoolean(
             self.SMOOTH,
@@ -156,9 +155,7 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
         
         lat_factor = self.parameterAsDouble(parameters,self.LAT_EX, context)
         lon_factor = self.parameterAsDouble(parameters,self.LON_EX, context)
-       
-        gamma=  self.parameterAsDouble(parameters,self.GAMMA, context)
-         
+                
         # slope of matrix rotation angle, NOT terrain slope
         azim_slope = np.tan(np.radians(s  )) 
         
@@ -263,7 +260,9 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
             # c = sqrt ( b**2 + diff_norm **2)
             out = 1/np.sqrt(1 + mx_a**2 + mx_a2**2)
             
-            out **= gamma # value stretching for cosmetical purposes    
+	    # To be studied : values can be stretched for better contrast, 
+	    # but this may produce unintutuive results in combination with varying sun height
+            # out **= gamma 
             
             ds.GetRasterBand(1).WriteArray(out[mx_view_out], * gdal_put[:2])
 
@@ -324,14 +323,12 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
              
             <b>Input</b> should be an elevation model in raster format. 
             
-            The <b>output</b> is expressing laplacian reflectance (adjusted for luminosty).
+            The <b>output</b> is expressing lambertian reflectance (with possible adjustements for better contrast).
            
             <b>Sun direction</b> and <b>sun angle</b> parmeters define horizontal and vertical position of the light source, where 0° is on the North, 90° on the East and 270° on the West.
 
             <b>Lateral and longitudinal exaggeration</b> introduce artifical deformations of the elevation model, in order to achieve higher shading contrast.   
-            
-            <b>Contrast</b>  (gamma) will produce darker shadows when g>1 or lighter shadows when g>1
-            
+                
             <b>Smoothen</b> option is using larger search radius, producing smoother results. 
             """)
 		
