@@ -1,5 +1,5 @@
 ---
-title: ‘Terrain Shading: a module for analytical terrain visualisation in QGIS’
+title: 'Terrain Shading: a module for analytical terrain visualisation in QGIS'
 tags:
   - GIS
   - lidar
