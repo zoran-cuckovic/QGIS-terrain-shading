@@ -1,9 +1,12 @@
 ---
-title: 'Advanced viewshed analysis: a Quantum GIS plug-in for the analysis of visual landscapes'
+title: ‘Terrain Shading: a module for analytical terrain visualisation in QGIS’
 tags:
   - GIS
-  - raster
-  - viewshed
+  - lidar
+  - elevation model visualisation
+  - landscape analysis
+  - archaeology 
+  - geomorphology
 authors:
  - name: Zoran Cuckovic
    orcid: 0000-0001-7626-4086
