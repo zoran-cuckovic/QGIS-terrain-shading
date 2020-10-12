@@ -14,9 +14,6 @@ authors:
 date: 13 October 2020
 bibliography: references.bib
 ---
-
-
-Terrain Shading: a module for analytical terrain visualisation in QGIS’
  
 ![Figure 1. Historic agricultural landscape revealed by analytical shading of Lidar derived terrain model. We can see traces of field boundaries, paths, and some ploughing marks, especially in the upper right corner (Site: environs of Oxford, UK; data: [@Environment_Agency_2020]; methods used: terrain position index (TPI), ambient occlusion and a bit of hillshading.).](fig1.png)
 
