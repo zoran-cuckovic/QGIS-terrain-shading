@@ -15,8 +15,10 @@ date: 13 October 2020
 bibliography: paper.bib
 ---
  
+ 
 ![Figure 1. Historic agricultural landscape revealed by analytical shading of Lidar derived terrain model. We can see traces of field boundaries, paths, and some ploughing marks, especially in the upper right corner (Site: environs of Oxford, UK; data: [__________]; methods used: terrain position index (TPI), ambient occlusion and a bit of hillshading.).](fig1.png)
 
+## Summary 
 
 Analytical terrain visualisation is used in various applications, such as cartography, geomorphological analysis or detection of specific surface features. For instance, archaeologists use extensively fine grained terrain models in order to map faint traces of historical activities (Figure 1). Digital terrain models are normally handled and analysed in GIS software (Geographic Information Systems), which is used for the analysis and management of various types of geographic data. QGIS is the most widely used open source GIS software and Terrain Shading module was developed in order to equip the software with several common algorithms for terrain visualisation and feature detection. More specifically, the module features algorithms for hillshade [____], ambient occlusion [also known as sky-view factor: [_____], natural shadow, and terrain position index [@DeReu].  These methods constitute a basic toolbox for analytical terrain visualisation [___]. Other algorithms may be included in the future, as well. 
 
