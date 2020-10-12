@@ -106,7 +106,7 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterRasterDestination(
                 self.OUTPUT,
-            self.tr("Output file")))
+            self.tr("Ambient occlusion")))
         
     def processAlgorithm(self, parameters, context, feedback):
         """

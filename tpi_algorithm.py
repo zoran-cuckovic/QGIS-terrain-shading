@@ -98,7 +98,7 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterRasterDestination(
                 self.OUTPUT,
-            self.tr("Output file")))
+            self.tr("Terrain position index")))
         
     def processAlgorithm(self, parameters, context, feedback):
     

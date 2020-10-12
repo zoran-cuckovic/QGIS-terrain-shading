@@ -98,7 +98,7 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterRasterDestination(
                 self.OUTPUT,
-            self.tr("Output file")))
+            self.tr("Shadow depth")))
         
     def processAlgorithm(self, parameters, context, feedback):
         """

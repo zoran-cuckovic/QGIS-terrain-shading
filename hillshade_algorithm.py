@@ -117,7 +117,7 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterRasterDestination(
                 self.OUTPUT,
-            self.tr("Output file")))
+            self.tr("Hillshade")))
         
     def processAlgorithm(self, parameters, context, feedback):
        
@@ -305,7 +305,7 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Hillshade (advanced)'
+        return 'Hillshade (terrain shading)'
 
     def displayName(self):
         """
