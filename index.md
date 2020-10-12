@@ -41,6 +41,7 @@ Data input for both algorithms should be a digital elevation model (DEM) in rast
 <!-- Two *analysis types* are available. The *shadow depth* will calculate the vertical difference between shadow surface and underlying terrain, while the *shadow length* will calculate the horizontal reach of the shadow. The reach is expressed as horizontal distance and not as slope length from the occlusion point to shadow tip.    -->
 
 **Remarks** -- For cartographic uses, the best result is achieved when varying levels of transparency according to shadow depth or length. You can download and apply **QGIS style definition** files from the [style library in this repository](https://github.com/zoran-cuckovic/QGIS-terrain-shading/tree/styles).
+The algorithm is explained in detail at [LandscapeArchaeology.org](https://LandscapeArchaeology.org/2019/qgis-shadows/).
 
 <!--
 The algorithm output may contain some sharp transitions or visible artefacts, especially when made for rugged terrain, over noisy elevation models, such as Lidar data, or over small scale models of urban architecture. A simple 3x3 average (smoothing) filter should be applied in these cases.   
@@ -53,10 +54,10 @@ The algorithm output may contain some sharp transitions or visible artefacts, es
 *Denoise* will apply a 3x3 average filter, as above. 
 
 **Remarks** -- Algorithm calculation time is directly dependant on the radius of analysis.
-For more information on scientific concepts behind ambient occlusion, see the [post on LandscapeArchaeology.org](https://LandscapeArchaeology.org/2020/ambient-occlusion)
+For more information on scientific concepts behind ambient occlusion, see the [post on LandscapeArchaeology.org](https://LandscapeArchaeology.org/2020/ambient-occlusion).
 
 ### Hillshade 
-This algorithm calculates surface shading - hillshade - for elevation models. The method is based on [Laplacian refelctance](https://en.wikipedia.org/wiki/Lambertian_reflectance).   
+This algorithm calculates surface shading - hillshade - for elevation models. The method is based on Lambert's reflectance model.
 
 *Sun direction* and *sun angle* parmeters define horizontal and vertical position of the light source, where 0° is on the North, 90° on the East and 270° on the West.
 
@@ -66,7 +67,7 @@ This algorithm calculates surface shading - hillshade - for elevation models. Th
 
 *Smoothen* option is using larger search radius, producing smoother results. 
 
-**Remarks** -- Lateral exaggeration will provide some shading to features that are parallel to the light source, and would normally remain invisible.   
+**Remarks** -- Lateral exaggeration will provide some shading to features that are parallel to the light source, and would normally remain invisible. For more details on algorithm used, see the post at [LandscapeArchaeology.org](https://landscapearchaeology.org/2020/hillshade/).   
 
 ### Terrain position index (TPI)
 Terrain position index is expressing the relative height of each elevation point within a specified radius. 
@@ -82,7 +83,7 @@ There are 3 <b>analysis types</b>: 1) standard TPI, 2) distance weighted and 3) 
 
 ## More information
 
-For tutorials and in-depth discussion see [LandscapeArchaeology.org/2019/qgis-shadows](https://LandscapeArchaeology.org/2019/qgis-shadows/) and [LandscapeArchaeology.org/2020/ambient-occlusion](https://LandscapeArchaeology.org/2020/ambient-occlusion).
+For tutorials and in-depth discussion see [LandscapeArchaeology.org/2020/hillshade/](https://landscapearchaeology.org/2020/hillshade/), [LandscapeArchaeology.org/2019/qgis-shadows](https://LandscapeArchaeology.org/2019/qgis-shadows/) and [LandscapeArchaeology.org/2020/ambient-occlusion](https://LandscapeArchaeology.org/2020/ambient-occlusion).
 
 Style library can be found in the [GitHub repo](https://github.com/zoran-cuckovic/QGIS-terrain-shading/tree/styles).
 
