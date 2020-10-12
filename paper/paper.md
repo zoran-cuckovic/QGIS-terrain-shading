@@ -8,22 +8,19 @@ tags:
   - archaeology 
   - geomorphology
 authors:
- - name: Zoran ccccc
+ - name: Zoran Čučković
    orcid: 0000-0001-7626-4086
    affiliation: UMR 6249 Laboratoire Chrono-environnement, Université Bourgogne Franche-Comté.
 date: 12 October 2020
 bibliography: paper.bib
 ---
 
+![Figure 1. Historic agricultural landscape revealed by analytical shading of Lidar derived terrain model. We can see traces of field boundaries, paths, and some ploughing marks, especially in the upper right corner (Site: environs of Oxford, UK; data: [__________]; methods used: terrain position index (TPI), ambient occlusion and a bit of hillshading.).](fig1.png)
 
-# Summary
+## Summary 
 
-Viewshed analysis is a standard feature of GIS software packages, such as ArcGIS [@ESRI2016], GRASS [@Neteler2012] or @ERDAS2015. However, these implementations vary considerably in terms of their versatility and robustness. Software in the free domain is particularly poor in this respect: visibility analysis is generally implemented as a simple binary query (true/false) for elevation datasets (eg. GRASS or SAGA GIS). In order to meet the demands of a typical analysis concerning visual landscapes we would be interested to find out how deep are certain locations below the visible horizon, what is the overall visual potential of a landscape or which sites are connected in visual networks (cf. @HIGUCHI1983; @Llobera2003; @Cuckovic2015).
+Analytical terrain visualisation is used in various applications, such as cartography, geomorphological analysis or detection of specific surface features. For instance, archaeologists use extensively fine grained terrain models in order to map faint traces of historical activities (Figure 1). Digital terrain models are normally handled and analysed in GIS software (Geographic Information Systems), which is used for the analysis and management of various types of geographic data. QGIS is the most widely used open source GIS software and Terrain Shading module was developed in order to equip the software with several common algorithms for terrain visualisation and feature detection. More specifically, the module features algorithms for hillshade [____], ambient occlusion [also known as sky-view factor: [_____], natural shadow, and terrain position index [@DeReu].  These methods constitute a basic toolbox for analytical terrain visualisation [___]. Other algorithms may be included in the future, as well. 
 
-Advanced viewshed analysis plug-in for open source Quantum GIS software has been made in order to meet some of these demands: besides standard binary viewshed it provides information on the depth at which objects may be hidden from view, mapping of visual horizon and analysis of intervisibility networks. As of version 0.5.1, the implemented algorithm has been adapted for intensive, repetitive viewshed calculation from multiple observation points.
+Most of these methods are already available in standard GIS software, but with features and parameters for general use, rather than for analytical terrain visualisation. The algorithms included in the QGIS Terrain Shading module are designed specifically for advanced terrain feature detection and mapping, an approach that is commonly used by archaeologists and geomorphologists, among others [_______]. Such methods of surface or terrain analysis often rely on high resolution elevation models, obtained thorough LIDAR scanning or photogrammetry, which entails specific requirements in terms of algorithmic architecture. QGIS terrain shading module aims to provide an integrated toolset for these approaches, as well as for general, wide scale terrain cartography.
 
-The plug-in is coded in Python and is dependant of the Quantum GIS framework. More specifically, it makes use of following libraries (bundled with Quantum GIS): numpy, gdal and QGIS core library.   
-
-
-
-# References
+## References
