@@ -1,20 +1,17 @@
 ---
-title: ‘Terrain Shading: a module for analytical terrain visualisation in QGIS’
+title: 'Advanced viewshed analysis: a Quantum GIS plug-in for the analysis of visual landscapes'
 tags:
   - GIS
-  - lidar
-  - elevation model visualisation
-  - landscape analysis
-  - archaeology 
-  - geomorphology
+  - raster
+  - viewshed
 authors:
-  - name: Zoran Čučković
-  - orcid: 0000-0001-7626-4086
-  - affiliation: Laboratoire Chrono-environnement (UMR 6249), Université de Bourgogne Franche-Comté
-date: 13 October 2020
+ - name: Zoran Cuckovic
+   orcid: 0000-0001-7626-4086
+   affiliation: UMR 6249 Laboratoire Chrono-environnement, Université Bourgogne Franche-Comté.
+date: 29 July 2016
 bibliography: paper.bib
 ---
- 
+
 
 # Summary
 
@@ -24,3 +21,6 @@ Advanced viewshed analysis plug-in for open source Quantum GIS software has been
 
 The plug-in is coded in Python and is dependant of the Quantum GIS framework. More specifically, it makes use of following libraries (bundled with Quantum GIS): numpy, gdal and QGIS core library.   
 
+
+
+# References
