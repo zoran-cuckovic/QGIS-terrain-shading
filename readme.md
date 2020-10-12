@@ -15,3 +15,4 @@ ATTENTION: gamma to be removed
 - hillshade_1 : standard parameters (azimuth = 315; sun angle = 45; Longitudinal exaggeration = 1, Lateral exaggeration = 1; gamma = 1)
 - hillshade_2: same as previous, but with Lateral exaggeration = 3
 - occlusion: radius = 5; denoise = true
+- shadow: standard parameters (azimuth = 315; sun angle = 45; smooth filter = true)
