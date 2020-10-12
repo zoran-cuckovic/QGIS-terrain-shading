@@ -9,8 +9,8 @@ tags:
   - geomorphology
 authors:
   - name: Zoran Čučković
-    orcid: 0000-0001-7626-4086
-    affiliation: Laboratoire Chrono-environnement (UMR 6249), Université de Bourgogne Franche-Comté
+  - orcid: 0000-0001-7626-4086
+  - affiliation: Laboratoire Chrono-environnement (UMR 6249), Université de Bourgogne Franche-Comté
 date: 13 October 2020
 bibliography: paper.bib
 ---
