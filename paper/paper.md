@@ -10,7 +10,10 @@ tags:
 authors:
  - name: Zoran Čučković
    orcid: 0000-0001-7626-4086
-   affiliations: UMR 6249 Laboratoire Chrono-environnement, Université Bourgogne Franche-Comté.
+   affiliation: 1
+affiliations:
+ - name: UMR 6249 Laboratoire Chrono-environnement, Université Bourgogne Franche-Comté.
+ - index: 1
 date: 12 October 2020
 bibliography: paper.bib
 ---
