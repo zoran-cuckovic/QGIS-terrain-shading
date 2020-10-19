@@ -95,12 +95,12 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterNumber(
             self.LAT_EX,
             self.tr('Lateral exaggeration'),
-            1, 2, False, 0, 10))
+            1, 2, False, 0, 100))
         
         self.addParameter(QgsProcessingParameterNumber(
             self.LON_EX,
             self.tr('Longitudinal exaggeration'),
-            1, 1, False, 0, 10))
+            1, 1, False, 0, 100))
         """
         self.addParameter(QgsProcessingParameterNumber(
             self.GAMMA,
