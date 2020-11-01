@@ -30,4 +30,8 @@ Recent profusion of available elevation data, acquired through Lidar surveys and
 
 The algorithms included in QGIS Terrain Shading module can be found in other, already available software, but with features and parameters for general use, rather than for analytical terrain visualisation. Some rather commonplace algorithms have also been refined, for instance hillshade, which can now be adjusted over two axes, parallel and perpendicular to the specified light source. All included algorithms are designed with specific sampling schemes in order to ensure a satisfying execution speed. QGIS Terrain Shading thus builds on existing solutions (e.g. SAGA GIS: [@saga] or RVT: [@rvt]), but with adjustments and improvements for advanced terrain feature detection and mapping, an approach that is commonly used by archaeologists and geomorphologists, among others [@Kokalj&Hesse]. Programmed in Python and integrated in QGIS, this solution can also be considered as "developper friendly", more accessible than software programmed in low level languages and/or distributed in complied versions exclusively. Programmed in Python and integrated in QGIS, this solution can also be considered as "developer friendly", more accessible than software programmed in low level languages and/or distributed in complied versions exclusively.     
 
+## PS
+
+This paper, written for The Journal of Open Source Software, was not accepted for publication (sigh...).
+
 ## References
