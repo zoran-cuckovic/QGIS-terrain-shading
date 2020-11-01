@@ -63,7 +63,7 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
     ANGLE = 'ANGLE'
     LON_EX ='LONG_EX'
     LAT_EX = 'LAT_EX'
-    SMOOTH = 'SMOOTH'
+    DENOISE = 'DENOISE'
     OUTPUT = 'OUTPUT'
 
 
@@ -100,7 +100,7 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterNumber(
             self.LON_EX,
             self.tr('Longitudinal exaggeration'),
-            1, 2, False, 0, 100))
+            1, 1, False, 0, 100))
         """
         self.addParameter(QgsProcessingParameterNumber(
             self.GAMMA,
@@ -109,8 +109,8 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
 	"""
 
         self.addParameter(QgsProcessingParameterBoolean(
-            self.SMOOTH,
-            self.tr('Smoothen'),
+            self.DENOISE,
+            self.tr('Denoise'),
             False, False)) 
         
 
@@ -151,7 +151,7 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
         sun_angle =  self.parameterAsDouble(parameters,self.ANGLE, context)
         sun_angle = np.radians( 90 - sun_angle) # taking orthogonal angle !!    
         
-        smooth = self.parameterAsInt(parameters,self.SMOOTH, context)        
+        smooth = self.parameterAsInt(parameters,self.DENOISE, context)        
         
         lat_factor = self.parameterAsDouble(parameters,self.LAT_EX, context)
         lon_factor = self.parameterAsDouble(parameters,self.LON_EX, context)
@@ -329,7 +329,7 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
 
             <b>Lateral and longitudinal exaggeration</b> introduce artifical deformations of the elevation model, in order to achieve higher shading contrast.   
                 
-            <b>Smoothen</b> option is using larger search radius, producing smoother results. 
+            <b>Denoise</b> option is using larger search radius, producing smoother results. 
             """)
 		
         return self.tr(h)
