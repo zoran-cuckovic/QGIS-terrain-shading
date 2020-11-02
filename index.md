@@ -1,6 +1,6 @@
 # Terrain shading: a QGIS plugin for modelling natural illumination over digital terrain models.
 
-**Current version: 0.3**
+**Current version: 0.4**
 
 **Supported QGIS version: 3.x**
 
@@ -63,9 +63,7 @@ This algorithm calculates surface shading - hillshade - for elevation models. Th
 
 *Lateral and longitudinal exaggeration* introduce artifical deformations of the elevation model, in order to achieve higher shading contrast.
 
-*Contrast (gamma)* will produce darker shadows when g > 1 or lighter shadows when g < 1.
-
-*Smoothen* option is using larger search radius, producing smoother results. 
+*Denoise* option is using larger search radius, producing smoother results. 
 
 **Remarks** -- Lateral exaggeration will provide some shading to features that are parallel to the light source, and would normally remain invisible. For more details on algorithm used, see the post at [LandscapeArchaeology.org/2020/hillshade/](https://landscapearchaeology.org/2020/hillshade/).   
 
