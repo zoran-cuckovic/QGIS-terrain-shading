@@ -210,6 +210,7 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
 
                     counter += 1
                     feedback.setProgress(100 * chunk * (counter/8) /  xsize)
+		    if feedback.isCanceled():  break
         
             mx_b /= 8
 
