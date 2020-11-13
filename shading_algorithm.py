@@ -261,6 +261,7 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
 
             counter += 1
             feedback.setProgress( 100 * chunk * counter / (xsize if steep else ysize))
+	    if feedback.isCanceled():  break
                
         ds = None
         
