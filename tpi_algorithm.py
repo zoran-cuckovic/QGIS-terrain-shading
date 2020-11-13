@@ -197,6 +197,7 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
                     counter += 1
                     
                     feedback.setProgress(100 * chunk * (counter/8) /  xsize)
+		    if feedback.isCanceled():  break
                         
             out = mx_z -  mx_a / mx_cnt # weighted mean !
 
