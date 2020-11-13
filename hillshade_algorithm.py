@@ -243,6 +243,7 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
                 
                 counter += 1
                 feedback.setProgress(100 * chunk * (counter/8) /  xsize)
+		if feedback.isCanceled():  break
                      
        
             mx_a /= dist * weights / lon_factor # slope = dz/dx  
