@@ -18,6 +18,8 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
+ 
+ TODO : speed up https://gis.stackexchange.com/questions/292754/efficiently-read-large-tif-raster-to-a-numpy-array-with-gdal
 """
 
 __author__ = 'Zoran Čučković'
