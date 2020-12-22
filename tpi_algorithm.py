@@ -23,6 +23,7 @@ __author__ = 'Zoran Čučković'
 __date__ = '2020-02-05'
 __copyright__ = '(C) 2020 by Zoran Čučković'
 
+from os import sys
 
 from PyQt5.QtCore import QCoreApplication
 from qgis.core import (QgsProcessing,
@@ -197,7 +198,7 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
                     counter += 1
                     
                     feedback.setProgress(100 * chunk * (counter/8) /  xsize)
-		    if feedback.isCanceled():  break
+                    if feedback.isCanceled(): sys.exit()
                         
             out = mx_z -  mx_a / mx_cnt # weighted mean !
 
