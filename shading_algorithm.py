@@ -27,6 +27,8 @@ __author__ = 'Zoran Čučković'
 __date__ = '2019-06-05'
 __copyright__ = '(C) 2019 by Zoran Čučković'
 
+from os import sys
+
 from PyQt5.QtCore import QCoreApplication
 from qgis.core import (QgsProcessing,
                        QgsProcessingException,
@@ -261,7 +263,8 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
 
             counter += 1
             feedback.setProgress( 100 * chunk * counter / (xsize if steep else ysize))
-	    if feedback.isCanceled():  break
+            if feedback.isCanceled(): sys.exit()
+           
                
         ds = None
         
