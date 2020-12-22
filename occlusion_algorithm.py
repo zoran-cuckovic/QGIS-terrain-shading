@@ -29,6 +29,8 @@ __copyright__ = '(C) 2020 by Zoran Čučković'
 
 __revision__ = '$Format:%H$'
 
+from os import sys
+
 from PyQt5.QtCore import QCoreApplication
 from qgis.core import (QgsProcessing,
                        QgsProcessingException,
@@ -210,7 +212,7 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
 
                     counter += 1
                     feedback.setProgress(100 * chunk * (counter/8) /  xsize)
-		    if feedback.isCanceled():  break
+                    if feedback.isCanceled(): sys.exit()
         
             mx_b /= 8
 
