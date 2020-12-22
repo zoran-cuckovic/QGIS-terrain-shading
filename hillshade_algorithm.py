@@ -18,13 +18,13 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
- 
- TODO : speed up https://gis.stackexchange.com/questions/292754/efficiently-read-large-tif-raster-to-a-numpy-array-with-gdal
 """
 
 __author__ = 'Zoran Čučković'
 __date__ = '2020-02-05'
 __copyright__ = '(C) 2020 by Zoran Čučković'
+
+from os import sys
 
 from PyQt5.QtCore import QCoreApplication
 from qgis.core import (QgsProcessing,
@@ -66,6 +66,7 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
     LON_EX ='LONG_EX'
     LAT_EX = 'LAT_EX'
     DENOISE = 'DENOISE'
+    BYTE_FORMAT = 'BYTE_FORMAT'
     OUTPUT = 'OUTPUT'
 
 
@@ -104,18 +105,22 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
             self.tr('Longitudinal exaggeration'),
             1, 1, False, 0, 100))
         """
+        These parameters give poor results : to be studied
         self.addParameter(QgsProcessingParameterNumber(
             self.GAMMA,
             self.tr('Contrast (gamma)'),
             1, 1, False, 0, 10))
-	"""
-
+        """
         self.addParameter(QgsProcessingParameterBoolean(
             self.DENOISE,
             self.tr('Denoise'),
             False, False)) 
         
-
+        self.addParameter(QgsProcessingParameterBoolean(
+            self.BYTE_FORMAT,
+            self.tr('Byte sized output (0-255)'),
+            False, False)) 
+        
         self.addParameter(
             QgsProcessingParameterRasterDestination(
                 self.OUTPUT,
@@ -142,45 +147,43 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
         self.output_model = self.parameterAsOutputLayer(parameters,self.OUTPUT,context)
 
         direction = self.parameterAsDouble(parameters,self.DIRECTION, context)
-        # handling matrix rotation (probably there are more elegant ways ..)        
-        steep = not (45 <= direction <= 135 or 225 <= direction <= 315)
-        rev_y= 90 <= direction <= 270 
-        rev_x= 0 <= direction <= 180
 
-        s = direction % 90 #collapse all directions to a 0-45 range 
-        if s > 45: s= 90-s
+        s = 315 - direction  # reverse the sequence and center on 45 (just so...)
         
         sun_angle =  self.parameterAsDouble(parameters,self.ANGLE, context)
         sun_angle = np.radians( 90 - sun_angle) # taking orthogonal angle !!    
         
-        smooth = self.parameterAsInt(parameters,self.DENOISE, context)        
+        smooth = self.parameterAsInt(parameters,self.DENOISE, context)     
+        byte =  self.parameterAsInt(parameters,self.BYTE_FORMAT, context) 
         
         lat_factor = self.parameterAsDouble(parameters,self.LAT_EX, context)
         lon_factor = self.parameterAsDouble(parameters,self.LON_EX, context)
                 
-        # slope of matrix rotation angle, NOT terrain slope
-        azim_slope = np.tan(np.radians(s  )) 
+        # for two prependicualr vectors, directions can be decomposed according to sin/cos rule
+        a, b = np.cos(np.radians(s)) , np.sin(np.radians(s)) 
         
-        # use matrix weights to model a vector of any direction (in 0-45 range)
-        a, b = azim_slope, 1-azim_slope
-            
-        if smooth: # larger matrix, same principle 
-            win = np.array([[-1, 0, -a,  0, b],
+        if smooth: # larger matrix, same principle ( VERY POOR DENOISING ! )
+            win = np.array([[-1, 0, -1,  0, 0],
                             [ 0, 0, 0, 0, 0],
                              [-1, 0, 0, 0, 1],
                              [ 0, 0, 0, 0, 0],
-                             [-b, 0,  a, 0, 1]]) 
+                             [0, 0,  1, 0, 1]]) 
         
         else: 
-            win = np.array([ [ -1, -a , b],
-                             [-1,  0 , 1],
-                             [-b,  a, 1]]) 
+#            win = np.array([ [ -1, -a , b],
+#                             [-1,  0 , 1],
+#                             [-b,  a, 1]]) 
+
+##    
+            win = np.array([[ -1, -1 ,0],
+                            [-1,  0 , 1],
+                            [0,  1, 1]])  
             
         # fipping and flopping to deploy on a 0-360 range     
-        if steep :  win = win.T
-
-        if rev_y : win = np.flipud(win)
-        if rev_x : win = np.fliplr(win)
+#        if steep :  win = win.T
+#
+#        if rev_y : win = np.flipud(win)
+#        if rev_x : win = np.fliplr(win)
         
         win2 = np.rot90(win)
         
@@ -197,12 +200,14 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
         nodata = dem.GetRasterBand(1).GetNoDataValue()  
              
                                                 # adjust for angular offset
-        pixel_size = dem.GetGeoTransform()[1] / np.cos(np.radians(s))   
+        pixel_dist = dem.GetGeoTransform()[1] * (4 if smooth else 2)
+        # for the record : diag_size = pix / np.cos(np.radians(s%45))   
         
-        # distances for altitude measures 
-        dist = (win_size - 1) * pixel_size 
-        # take weights per pair of mesures because we use altitude differences. 
-        weights = np.sum(win[win>0]) # positive half of the matrix
+#        # distances for altitude measures 
+#        dist = (win_size - 1) * pixel_size 
+#   
+#        # take weights per pair of mesures because we use altitude differences. 
+#        weights = np.sum(win[win>0]) 
    
         chunk = int(ProcessingConfig.getSetting('DATA_CHUNK')) * 1000000
         chunk = min(chunk // xsize, xsize)
@@ -210,7 +215,8 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
         
         # setting up output writing parameters. 
         driver = gdal.GetDriverByName('GTiff')
-        ds = driver.Create(self.output_model, xsize,ysize, 1, gdal.GDT_Float32)
+        ds = driver.Create(self.output_model, xsize,ysize, 1, 
+                           gdal.GDT_Byte if byte else gdal.GDT_Float32)
         ds.SetProjection(dem.GetProjection())
         ds.SetGeoTransform(dem.GetGeoTransform())
         
@@ -228,40 +234,45 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
             shape = (xsize, ysize), 
             chunk = chunk,
             overlap = overlap ) :
-        
-            mx_z[mx_view_in]=dem.ReadAsArray(*gdal_take).astype(float)
+            
+            # for speed : read into an allocated array
+            dem.ReadAsArray(*gdal_take, mx_z[mx_view_in])
             
             mx_a [:], mx_a2[:] = 0,0
                        
             for (y,x), weight in np.ndenumerate(win):
 
-                if weight ==0 : continue
-
                 view_in, view_out = helpers.view(y - win_size//2, x - win_size//2, mx_z.shape)
-                
-                mx_a[view_out] += mx_z[view_in]  * weight
-                
-                mx_a2[view_out] += mx_z[view_in]  * win2[y,x]
+                          
+                if weight : mx_a[view_out] += mx_z[view_in]  * weight 
+                            #supposing that multiplication by 1/-1 has no overhead... 
+                w2 = win2[y,x]    
+                if w2: mx_a2[view_out] += mx_z[view_in]  * w2
                 
                 counter += 1
-                feedback.setProgress(100 * chunk * (counter/8) /  xsize)
-		if feedback.isCanceled():  break
-                     
-       
-            mx_a /= dist * weights / lon_factor # slope = dz/dx  
-            mx_a2/= dist * weights / lat_factor
+                feedback.setProgress(100 * chunk * (counter/9) /  xsize)
+                if feedback.isCanceled(): sys.exit()
             
-            # adjust slope for sun angle (slope * distance)
-            mx_a -= np.tan(sun_angle) 
+            # slope = dz / dx
+            mx_a /= pixel_dist * 3       
+            mx_a2/=  pixel_dist * 3
+
+            # to adjust slope for sun angle (slope * distance)
+            # mx_a -= np.tan(sun_angle) 
+            
+            # using vector addition to isolate directions, i.e the slope along such directions
+            # (knowing that all but cardinal directions have to be calculated from two vector components)
+            # everything is cast to an angle (atan), which is costly ...
+            lon =  np.arctan((mx_a * a + mx_a2 * b) * lon_factor) - sun_angle
+            # attention :  mx_a * -1 (= reverse direction !)
+            lat =  np.arctan((mx_a * -b + mx_a2 * a) * lat_factor) 
     
             # COSINE LAW (Lambertian reflectance)
-            # diff_normal = vector addition >> sqrt(mx_a**2 + mx_a2**2)
-            # angle_norm = np.arctan(diff_norm) [i.e. difference from sun angle since all angles have been adjusted above]
-            # reflectance = np.cos(angle_norm)
-            
-            # Note that cos = b/c. Normally, b = pixel size, but here is 1 because of division by distance above
-            # c = sqrt ( b**2 + diff_norm **2)
-            out = 1/np.sqrt(1 + mx_a**2 + mx_a2**2)
+            # a shadow below an illuminated object is a parallelogram
+            # with height = cos(inclination) * true_height and 
+            # width = cos(inclination) * true_width
+            out = np.cos(lon) * np.cos(lat)
+            if byte : out *= 255
             
 	    # To be studied : values can be stretched for better contrast, 
 	    # but this may produce unintutuive results in combination with varying sun height
@@ -289,6 +300,8 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
 
         ce.setMinimumValue(mean - 3*sd)
         ce.setMaximumValue(mean + 3*sd)
+        
+       # to do QgsBrightnessContrastFilter
 
         
         rnd.setContrastEnhancement(ce)
