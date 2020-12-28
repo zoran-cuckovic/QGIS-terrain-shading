@@ -37,18 +37,23 @@ import inspect
 from qgis.core import QgsProcessingAlgorithm, QgsApplication
 from .dem_shading_provider import DemShadingProvider
 
-cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
+#cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
+#
+#if cmd_folder not in sys.path:
+#    sys.path.insert(0, cmd_folder)
 
-if cmd_folder not in sys.path:
-    sys.path.insert(0, cmd_folder)
 
+class DemShadingPlugin:
 
-class DemShadingPlugin(object):
-
-    def __init__(self):
-        self.provider = DemShadingProvider()
+    def __init__(self, iface):
+        
+        self.iface = iface
+        self.provider = None
+        
+       
 
     def initGui(self):
+        self.provider = DemShadingProvider()
         QgsApplication.processingRegistry().addProvider(self.provider)
 
     def unload(self):
