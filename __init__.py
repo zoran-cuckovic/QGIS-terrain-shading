@@ -36,4 +36,4 @@ def classFactory(iface):  # pylint: disable=invalid-name
     """
     #
     from .dem_shading import DemShadingPlugin
-    return DemShadingPlugin()
+    return DemShadingPlugin(iface)
