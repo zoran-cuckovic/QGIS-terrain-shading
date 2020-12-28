@@ -42,16 +42,17 @@ from .tpi_algorithm import TpiAlgorithm
 from .hillshade_algorithm import HillshadeAlgorithm
 
 
+
 class DemShadingProvider(QgsProcessingProvider):
 
     def __init__(self):
-        QgsProcessingProvider.__init__(self)
+        
+        super().__init__() # should resolve "key error" on unload
+        #QgsProcessingProvider.__init__(self)
 
         # Load algorithms
-        self.alglist =[DemShadingAlgorithm(),
-                        HillshadeAlgorithm(),
-                        OcclusionAlgorithm(),
-                        TpiAlgorithm()]
+        self.alglist =[DemShadingAlgorithm(),  HillshadeAlgorithm(),
+                        OcclusionAlgorithm(),  TpiAlgorithm()]
         
     def load(self):
 
@@ -94,7 +95,7 @@ class DemShadingProvider(QgsProcessingProvider):
         string should be a unique, short, character only string, eg "qgis" or
         "gdal". This string should not be localised.
         """
-        return 'DEM shading'
+        return 'terrain_shading'
 
     def name(self):
         """
