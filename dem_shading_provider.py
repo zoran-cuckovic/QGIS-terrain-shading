@@ -76,7 +76,7 @@ class DemShadingProvider(QgsProcessingProvider):
         should be implemented here.
         """
         ProcessingConfig.removeSetting('TERRAIN_SHADING_ACTIVATED')
-        ProcessingConfig.removeSetting('DATA_CHUNK')
+        #ProcessingConfig.removeSetting('DATA_CHUNK')
 
     def loadAlgorithms(self):
         """
