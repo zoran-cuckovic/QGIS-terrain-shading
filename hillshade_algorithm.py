@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 """
+ERROR : CHUNKS ARE NOT CALCULATED PROPERLY 
+CHUNK = SIZE ON X/Y, therefore  sqrt2 !! for a square 
 /***************************************************************************
  This algorihm calculates simple, lambertian reflectance of a surface, given
  an elevation model (DEM), in a raster format
@@ -24,7 +26,7 @@ __author__ = 'Zoran Čučković'
 __date__ = '2020-02-05'
 __copyright__ = '(C) 2020 by Zoran Čučković'
 
-from os import sys
+from os import sys, path
 
 from PyQt5.QtCore import QCoreApplication
 from qgis.core import (QgsProcessing,
@@ -170,7 +172,7 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
                              [0, 0,  1, 0, 1]]) 
         
         else: 
-#            
+
             win = np.array([[0, 0 ,0],
                             [0,  0 , 1],
                             [0,  1, 1]])  
@@ -247,7 +249,6 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
                     # mirrored value
                     mx_a[view_in] -= mx_z[view_out] 
                     
-                            #supposing that multiplication by 1/-1 has no overhead... 
                 w2 = win2[y,x]    
                 if w2: 
                     mx_a2[view_out] += mx_z[view_in]
@@ -338,6 +339,7 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
         return QCoreApplication.translate('Processing', string)
 
     def shortHelpString(self):
+        curr_dir = path.dirname(path.realpath(__file__))
         h = ( """
              <h3>    This algorithm calculates surface shading - hillshade - for elevation models.
              
@@ -350,7 +352,11 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
             <b>Lateral and longitudinal exaggeration</b> introduce artifical deformations of the elevation model, in order to achieve higher shading contrast.   
                 
             <b>Denoise</b> option is using larger search radius, producing smoother results. 
-            """)
+            
+            If you find this tool useful, consider to :
+                 
+             <a href='https://ko-fi.com/D1D41HYSW' target='_blank'><img height='30' style='border:0px;height:36px;' src='%s/help/kofi2.webp' /></a>
+            """) % curr_dir
 		
         return self.tr(h)
 
