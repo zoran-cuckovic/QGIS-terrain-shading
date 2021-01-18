@@ -29,7 +29,7 @@ __copyright__ = '(C) 2020 by Zoran Čučković'
 
 __revision__ = '$Format:%H$'
 
-from os import sys
+from os import sys, path
 
 from PyQt5.QtCore import QCoreApplication
 from qgis.core import (QgsProcessing,
@@ -208,7 +208,7 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
                         np.maximum(mx_c[view_in], -angles, mx_c[view_in] )
                         # arg 3 = result keeping array
                     
-                    mx_b += mx_a; mx_b += mx_c
+                    mx_b += mx_a + mx_c
 
                     counter += 1
                     feedback.setProgress(100 * chunk * (counter/8) /  xsize)
@@ -272,6 +272,7 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
         return QCoreApplication.translate('Processing', string)
 
     def shortHelpString(self):
+        curr_dir = path.dirname(path.realpath(__file__))
         h = ( """
                 Ambient occlusion of a locale is the proportion of the ambient light that it may recieve. This algorithm assumes equal light intensity from all directions (simple ambient lighting).
                 Parameters:
@@ -280,7 +281,11 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
                  - Denoise: Apply a simple smoothing filter.
                 NB. This algorithm is made for terrain visualisation, it is not appropriate for precise calculation of solar exposition or of incident light.
                 For more information see <a href="https://zoran-cuckovic.github.io/QGIS-terrain-shading/"> the manual </a> and the in-depth <a href=https://landscapearchaeology.org/2020/ambient-occlusion/"> blog post</a>.
-            """)
+                
+                If you find this tool useful, consider to :
+                 
+             <a href='https://ko-fi.com/D1D41HYSW' target='_blank'><img height='30' style='border:0px;height:36px;' src='%s/help/kofi2.webp' /></a>
+            """) % curr_dir
 		
         return self.tr(h)
 
