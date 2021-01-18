@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 
 """
-ERROR : CHUNKS ARE NOT CALCULATED PROPERLY 
-CHUNK = SIZE ON X/Y, therefore  sqrt2 !! for a square 
 /***************************************************************************
  This algorihm calculates simple, lambertian reflectance of a surface, given
  an elevation model (DEM), in a raster format
