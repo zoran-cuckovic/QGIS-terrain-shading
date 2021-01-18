@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 """
+
+    
 /***************************************************************************
  DemShading - Terrain position algorithm
  This algorithm caluclates relative topographic position of each pixel of an
@@ -23,7 +25,7 @@ __author__ = 'Zoran Čučković'
 __date__ = '2020-02-05'
 __copyright__ = '(C) 2020 by Zoran Čučković'
 
-from os import sys
+from os import sys, path
 
 from PyQt5.QtCore import QCoreApplication
 from qgis.core import (QgsProcessing,
@@ -157,17 +159,42 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
         # define empty matrices to hold data : faster
         mx_z = np.zeros( chunk_slice)
         mx_a = np.zeros(mx_z.shape)
-        mx_cnt = np.zeros(mx_z.shape)       
+        
+        if weighted ==1 :
+            mx_cnt = np.zeros(mx_z.shape)    
+            
+        else: 
+            #pre-calculate number of visits per cell 
+            sy, sx = mx_z.shape
+            c1, c2 = np.mgrid[0 : sy, 0 : sx]
+            
+            if weighted == 2:
+                c1, c2 = np.cumsum(c1, axis = 0), np.cumsum(c2, axis=1)
+                max_val = sum([i for i in range(radius+1)])
+            
+            else: 
+                max_val = radius
+                         
+            c1, c2 = np.clip(c1, 0, max_val ), np.clip(c2, 0, max_val )
+            
+            # reverse and find distances to back edges
+            np.minimum(c1, c1[::-1,:], c1); np.minimum(c2, c2[:, ::-1], c2)
+           
+            # corner = 3 * radius pixels (we have a star shaped window)
+            mx_cnt =  max_val * 3 + c1*2 + c2*2 + np.minimum (c1, c2) 
+            
 
         counter = 0
-            
+
+        
         #Loop through data chunks (and write results)
         for mx_view_in, gdal_take, mx_view_out, gdal_put in window_loop ( 
             shape = (xsize, ysize), 
             chunk = chunk,
             overlap = overlap) :
 
-            mx_a[:]=0; mx_cnt[:]=0   
+            mx_a[:]=0
+            if weighted == 1: mx_cnt[:]=0   
             
             mx_z[mx_view_in]= dem.ReadAsArray(*gdal_take).astype(float)
             
@@ -175,33 +202,45 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
                 
             # step thourgh 8 standard directions (N, NE, E, etc)
             # for more directions : step = 0.5; 0.25; etc
-            # !! we do not use full neighbourhood around each point !!
-            for dy in [-1,0,1]:
-                for dx in [-1,0,1]:
+            # !! we use mirror values, to optimise !!
+            for dx, dy in [(0,1), (1,1), (1,0), (1, -1)]:
 
-                    if dx == dy == 0 : continue
-                    # no need for radius loop !! construct window only !!
-                    for r in range (1, radius + 1):        
-                        
-                        view_in, view_out = view(r * dy, r * dx, mx_z.shape)
-                        # use distance (r) or height diffrence as weight
-                        if weighted == 1 : w = abs (mx_z[view_in] - mx_z[view_out])
-                        elif weighted == 2 : w = r
-                        else : w = 1
+                for r in range (1, radius + 1):     
+           
+                    
+                    view_in, view_out = view(r * dy, r * dx, mx_z.shape)
+                    view_out2, view_in2 = view_in, view_out
+                    
+                    z, z2 = mx_z[view_in], mx_z[view_in2] 
+                    
+                    # use distance (r) or height diffrence as weight
+                    if weighted :
+                        if weighted == 1 :
+                            w = abs (z - z2)
+                            # cannot precalculate these weights
+                            mx_cnt[view_out] += w
+                            mx_cnt[view_out2] += w
+                            
+                        else:  
+                            w = r 
+#                            mx_cnt[view_out] += w
+#                            mx_cnt[view_out2] += w
                  
-                        z = mx_z[view_in] 
-                                           
                         mx_a[view_out] += z * w 
-                       
-                        mx_cnt[view_out] += w
-                    
-                    counter += 1
-                    
-                    feedback.setProgress(100 * chunk * (counter/8) /  xsize)
-                    if feedback.isCanceled(): sys.exit()
+                        mx_a[view_out2] += z2 * w 
                         
-            out = mx_z -  mx_a / mx_cnt # weighted mean !
-
+                    else: 
+                        mx_a[view_out] += z  
+                        mx_a[view_out2] += z2  
+                        
+                counter += 1
+                
+                feedback.setProgress(100 * chunk * (counter/8) /  xsize)
+                if feedback.isCanceled(): sys.exit()
+            
+            mx_z -=  mx_a / mx_cnt # weighted mean !
+            out = mx_z
+            
             ds.GetRasterBand(1).WriteArray(out[mx_view_out], * gdal_put[:2])
 
         ds = None
@@ -252,6 +291,7 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
         return QCoreApplication.translate('Processing', string)
 
     def shortHelpString(self):
+        curr_dir = path.dirname(path.realpath(__file__))
         h = ( """
              Topographic position index is expressing the relative height of each elevation point within a specified radius. 
              
@@ -264,7 +304,10 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
             
             <b>Denoise</b> option is applying a simple 3x3 smooth filter. 
             
-            """)
+            If you find this tool useful, consider to :
+                 
+             <a href='https://ko-fi.com/D1D41HYSW' target='_blank'><img height='30' style='border:0px;height:36px;' src='%s/help/kofi2.webp' /></a>
+            """) % curr_dir
 		
         return self.tr(h)
 
