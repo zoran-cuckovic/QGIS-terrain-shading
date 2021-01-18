@@ -40,7 +40,7 @@ from .shading_algorithm import DemShadingAlgorithm
 from .occlusion_algorithm import OcclusionAlgorithm
 from .tpi_algorithm import TpiAlgorithm
 from .hillshade_algorithm import HillshadeAlgorithm
-
+from .texture_algorithm import TextureAlgorithm
 
 
 class DemShadingProvider(QgsProcessingProvider):
@@ -52,7 +52,8 @@ class DemShadingProvider(QgsProcessingProvider):
 
         # Load algorithms
         self.alglist =[DemShadingAlgorithm(),  HillshadeAlgorithm(),
-                        OcclusionAlgorithm(),  TpiAlgorithm()]
+                        OcclusionAlgorithm(),  TpiAlgorithm(), 
+                        TextureAlgorithm()]
         
     def load(self):
 
