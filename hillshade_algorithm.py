@@ -163,21 +163,19 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
         a, b = np.cos(np.radians(s)) , np.sin(np.radians(s)) 
         
         if smooth: # larger matrix, same principle ( VERY POOR DENOISING ! )
-            win = np.array([[-1, 0, -1,  0, 0],
+            win = np.array([[0, 0, 0,  0, 0],
                             [ 0, 0, 0, 0, 0],
-                             [-1, 0, 0, 0, 1],
+                             [0, 0, 0, 0, 1],
                              [ 0, 0, 0, 0, 0],
                              [0, 0,  1, 0, 1]]) 
         
         else: 
-#            win = np.array([ [ -1, -a , b],
-#                             [-1,  0 , 1],
-#                             [-b,  a, 1]]) 
-
-##    
-            win = np.array([[ -1, -1 ,0],
-                            [-1,  0 , 1],
+#            
+            win = np.array([[0, 0 ,0],
+                            [0,  0 , 1],
                             [0,  1, 1]])  
+    
+    
             
         # fipping and flopping to deploy on a 0-360 range     
 #        if steep :  win = win.T
@@ -244,10 +242,16 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
 
                 view_in, view_out = helpers.view(y - win_size//2, x - win_size//2, mx_z.shape)
                           
-                if weight : mx_a[view_out] += mx_z[view_in]  * weight 
+                if weight : 
+                    mx_a[view_out] += mx_z[view_in]  
+                    # mirrored value
+                    mx_a[view_in] -= mx_z[view_out] 
+                    
                             #supposing that multiplication by 1/-1 has no overhead... 
                 w2 = win2[y,x]    
-                if w2: mx_a2[view_out] += mx_z[view_in]  * w2
+                if w2: 
+                    mx_a2[view_out] += mx_z[view_in]
+                    mx_a2[view_in] -= mx_z[view_out]
                 
                 counter += 1
                 feedback.setProgress(100 * chunk * (counter/9) /  xsize)
