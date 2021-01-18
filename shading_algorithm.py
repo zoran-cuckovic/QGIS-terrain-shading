@@ -27,7 +27,7 @@ __author__ = 'Zoran Čučković'
 __date__ = '2019-06-05'
 __copyright__ = '(C) 2019 by Zoran Čučković'
 
-from os import sys
+from os import sys, path
 
 from PyQt5.QtCore import QCoreApplication
 from qgis.core import (QgsProcessing,
@@ -285,7 +285,7 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
         elif mean < -30: path = "/styles/shading_0-500.qml"
         else:  path = "/styles/shading_0-250.qml" 
 
-        path = os.path.dirname(__file__) + path
+        path = path.dirname(__file__) + path
 
         output.loadNamedStyle(path)
         output.triggerRepaint()
@@ -312,6 +312,7 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
         return QCoreApplication.translate('Processing', string)
 
     def shortHelpString(self):
+        curr_dir = path.dirname(path.realpath(__file__))
         h = ( """
             <h3>    This algorithm models natural illumination over elevation models, namely shadows.
              
@@ -323,9 +324,9 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
 			
             Shading style definitions can be found in <a href="https://github.com/zoran-cuckovic/QGIS-terrain-shading/tree/styles">plugin repository</a>.   
 
-	    If you find this plugin useful, please consider <a href = "https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=PM4YE7ZTPGLAU&source=url ">making a donation</a>.
-			
-            """)
+	    If you find this plugin useful, consider to : 
+             <a href='https://ko-fi.com/D1D41HYSW' target='_blank'><img height='30' style='border:0px;height:36px;' src='%s/help/kofi2.webp' /></a>
+            """) % curr_dir
 		
         return self.tr(h)
 
