@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 """
-
     
 /***************************************************************************
  DemShading - Terrain position algorithm
@@ -101,7 +100,7 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterRasterDestination(
                 self.OUTPUT,
-            self.tr("Terrain position index")))
+            self.tr("Topographic position index")))
         
     def processAlgorithm(self, parameters, context, feedback):
     
@@ -183,6 +182,7 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
             # corner = 3 * radius pixels (we have a star shaped window)
             mx_cnt =  max_val * 3 + c1*2 + c2*2 + np.minimum (c1, c2) 
             
+          
 
         counter = 0
 
@@ -207,7 +207,6 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
 
                 for r in range (1, radius + 1):     
            
-                    
                     view_in, view_out = view(r * dy, r * dx, mx_z.shape)
                     view_out2, view_in2 = view_in, view_out
                     
@@ -221,22 +220,24 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
                             mx_cnt[view_out] += w
                             mx_cnt[view_out2] += w
                             
-                        else:  
-                            w = r 
-#                            mx_cnt[view_out] += w
-#                            mx_cnt[view_out2] += w
-                 
-                        mx_a[view_out] += z * w 
-                        mx_a[view_out2] += z2 * w 
-                        
-                    else: 
-                        mx_a[view_out] += z  
-                        mx_a[view_out2] += z2  
+                        else:  w = r 
+                    # x1 should not introduce significant overhead, in theory...
+                    else : w =1
+                    
+                    mx_a[view_out] += z * w 
+                    mx_a[view_out2] += z2 * w 
                         
                 counter += 1
                 
-                feedback.setProgress(100 * chunk * (counter/8) /  xsize)
+                prog = chunk * (counter/8) /  xsize
+                feedback.setProgress(100 * prog)
                 if feedback.isCanceled(): sys.exit()
+            
+            # this is a patch : last chunk is often spilling outside raster edge 
+            # so, move the edge values to match raster edge
+            end = gdal_take[2]           
+            if weighted != 1 and end + gdal_take[0] == xsize : 
+                mx_cnt[:, end -radius : end] = mx_cnt[ : , -radius : ]
             
             mx_z -=  mx_a / mx_cnt # weighted mean !
             out = mx_z
