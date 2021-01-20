@@ -206,8 +206,9 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
             for dx, dy in [(0,1), (1,1), (1,0), (1, -1)]:
 
                 for r in range (1, radius + 1):     
-           
-                    view_in, view_out = view(r * dy, r * dx, mx_z.shape)
+                    # ! analyse only the supplied data : mx_z[mx_view_in]
+                    view_in, view_out = view(r * dy, r * dx, mx_z[mx_view_in].shape)
+                    # this is for readability only
                     view_out2, view_in2 = view_in, view_out
                     
                     z, z2 = mx_z[view_in], mx_z[view_in2] 
@@ -241,7 +242,6 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
             
             mx_z -=  mx_a / mx_cnt # weighted mean !
             out = mx_z
-            
             ds.GetRasterBand(1).WriteArray(out[mx_view_out], * gdal_put[:2])
 
         ds = None
