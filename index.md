@@ -91,7 +91,10 @@ See also at [www.textureshading.com](http://www.textureshading.com).
 
 ## More information
 
-For tutorials and in-depth discussion see [LandscapeArchaeology.org/2020/hillshade/](https://landscapearchaeology.org/2020/hillshade/), [LandscapeArchaeology.org/2019/qgis-shadows](https://LandscapeArchaeology.org/2019/qgis-shadows/) and [LandscapeArchaeology.org/2020/ambient-occlusion](https://LandscapeArchaeology.org/2020/ambient-occlusion).
+For tutorials and in-depth discussion see: 
+- [LandscapeArchaeology.org/2020/hillshade/](https://landscapearchaeology.org/2020/hillshade/) 
+- [LandscapeArchaeology.org/2019/qgis-shadows](https://LandscapeArchaeology.org/2019/qgis-shadows/) 
+- [LandscapeArchaeology.org/2020/ambient-occlusion](https://LandscapeArchaeology.org/2020/ambient-occlusion)
 
 Style library can be found in the [GitHub repo](https://github.com/zoran-cuckovic/QGIS-terrain-shading/tree/styles).
 
