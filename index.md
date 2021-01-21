@@ -78,6 +78,16 @@ There are 3 <b>analysis types</b>: 1) standard TPI, 2) distance weighted and 3) 
 
 **Remarks** -- The weighted method is used to eliminate local variations, close to each elevation point, or to stress the maximum height difference. In general they produce less sharp results, but with improved contrast. 
 
+### Texture shading 
+
+This algorithm is based on wawelength analysis (Fourrier transform) where terrain curvature is represented as a waweform. 
+
+*Alpha* paramter controls the impact of wawe-forms over elevation: when set to zero, pure elevation will be returned, when set to one, only the "noise" will be retained. The optimal value is approx 0.5.
+
+**Remarks** the elevation model should not contain "NoData", i.e. empty data. These will introduce large stripes across the output raster. 
+
+See also at [www.textureshading.com](http://www.textureshading.com).
+
 
 ## More information
 
