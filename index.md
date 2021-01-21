@@ -1,6 +1,6 @@
 # Terrain shading: a QGIS plugin for modelling natural illumination over digital terrain models.
 
-**Current version: 0.4**
+**Current stable version: 0.6** (experimental version : 0.7)
 
 **Supported QGIS version: 3.x**
 
