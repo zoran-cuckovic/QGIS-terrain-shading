@@ -280,13 +280,15 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
         mean, sd = stats.mean, stats.stdDev
        # minv, maxv = stats.minimumValue, stats.maximumValue 
 
-        if mean > -10: path= "/styles/shading_0-50.qml"
-        elif mean < -30: path = "/styles/shading_0-500.qml"
-        else:  path = "/styles/shading_0-250.qml" 
+        if mean > -10: style= "/styles/shading_0-50.qml"
+        elif mean < -30: style = "/styles/shading_0-500.qml"
+        else:  style = "/styles/shading_0-250.qml" 
 
-        path = path.dirname(__file__) + path
+        style = path.dirname(__file__) + style
+        
+        print (style)
 
-        output.loadNamedStyle(path)
+        output.loadNamedStyle(style)
         output.triggerRepaint()
         return {self.OUTPUT: self.output_model}
 
