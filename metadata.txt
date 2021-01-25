@@ -4,7 +4,7 @@
 name=Terrain Shading
 qgisMinimumVersion=3.0
 description=Shading algorithms for terrain analysis and visualisation.
-version=0.7
+version=0.8
 author=Zoran Čučković
 email=cuckovic.zoran@gmail.com
 
@@ -26,7 +26,7 @@ homepage=https://zoran-cuckovic.github.io/QGIS-terrain-shading
 category=Raster Analysis
 icon=icon.png
 # experimental flag
-experimental=True
+experimental=False
 
 # deprecated flag (applies to the whole plugin, not just a single version)
 deprecated=False
