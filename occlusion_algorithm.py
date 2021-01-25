@@ -167,7 +167,14 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
         mx_z = np.zeros( chunk_slice)
         mx_a = np.zeros(mx_z.shape)
         mx_b = np.zeros(mx_z.shape)
-        mx_c = np.zeros(mx_z.shape)
+        out =  np.zeros(mx_z.shape)
+        
+        # intialise the count of lines per pixel
+        mx_cnt = np.ones(mx_z.shape)
+        # borders   # main area : 8 lines
+        mx_cnt[:]= 5; mx_cnt[1:-1, 1:-1] = 8
+        # corners
+        for v in [(0,0),(-1,-1),(0,-1), (-1,0)]: mx_cnt[v] = 3
                           
         counter = 0
             
@@ -187,42 +194,58 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
                     
                 mx_z = mx_a/9
                                     
-            mx_b[:]=0
-            # 8 standard lines, for more : step = 0.5; 0.25
-            for dy in [-1,0,1]:
-                for dx in [-1,0,1]:
+            
+            # 8 standard lines, we use symetry to optimise
+            for dy, dx in [(0,1), (1,1), (1,0), (1, -1)]:
+                                
+                for r in range (1, radius + 1):
 
-                    if dx == dy == 0 : continue
+                    view_in, view_out = view(r * dy, r * dx, mx_z[mx_view_in].shape)
 
-                    mx_a [:]= -9999 if openness else 0
-                    mx_c [:]= -9999 if openness else 0   
+                    angles = mx_z[view_in] - mx_z[view_out]
+                                                   # diagonals         
+                    dist = r * pixel_size * (1.4142 if dx * dy != 0 else 1) 
                     
-                    for r in range (1, radius + 1):
-
-                        view_in, view_out = view(r * dy, r * dx, mx_z.shape)
-
-                        angles = mx_z[view_in] - mx_z[view_out]
-                        angles /= r * pixel_size 
-			
-                        np.maximum(mx_a[view_out], angles, mx_a[view_out] )
-                        np.maximum(mx_c[view_in], -angles, mx_c[view_in] )
-                        # arg 3 = result keeping array
+                    angles /= dist 
                     
-                    mx_b += mx_a + mx_c
+                    if openness and r == 1:
+                        # need to properly intialise the surface
+                        mx_a[view_out], mx_b[view_in] = angles, -angles    
+                    else:  
+                        # sky view : starts with 0
+                        np.maximum(mx_a[view_out], angles, mx_a[view_out])
+                        np.maximum(mx_b[view_in], -angles, mx_b[view_in] )
+                                    
+                out += np.sin(mx_a) + np.sin(mx_b)
+                # ! this is not the same as np.sin ((mx_a + mx_b)/2) !!
+                # average of angles ... se Kokalj et al. 2011 
+                mx_a [:], mx_b [:] = 0, 0  # reset 
 
-                    counter += 1
-                    feedback.setProgress(100 * chunk * (counter/8) /  xsize)
-                    if feedback.isCanceled(): sys.exit()
-        
-            mx_b /= 8
+                counter += 1
+                feedback.setProgress(100 * chunk * (counter/4) /  xsize)
+                if feedback.isCanceled(): sys.exit()
 
-            #For speed we should do without tangent calcualtion, but it's not crucial... (and not evident)
             if openness:
-                out = 1 - (np.arctan(mx_b) / np.pi + 0.5)
-            else:
-                out = 1 - (np.arctan(mx_b)* 2 / np.pi )
-
+                 # this is a patch : last chunk is often spilling outside raster edge 
+                 # so, move the edge values to match raster edge
+                end = gdal_take[2]           
+                if end + gdal_take[0] == xsize : 
+                    mx_cnt[:, end-1: end] = mx_cnt[:, -1:] 
+                
+                out /= mx_cnt
+            else: 
+                # don'k know why, but for SVF simple division works better 
+                # (it assumes zero values for non tested directions)
+                out /= 8
+            
+                
+            # alternative : angles :
+            #out = 1 - (np.arctan(mx_c)* 2 / np.pi )
+            
+            out = 1 - out
             ds.GetRasterBand(1).WriteArray(out[mx_view_out], * gdal_put[:2])
+            
+            out[:]=0 # RESET
 
         ds = None
         
@@ -266,7 +289,7 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
         Returns the translated algorithm name, which should be used for any
         user-visible display of the algorithm name.
         """
-        return self.tr(self.name())
+        return self.tr(self.name()+ " (sky-view)")
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)
