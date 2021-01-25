@@ -272,7 +272,6 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
 
     def postProcessAlgorithm(self, context, feedback):
         
-        import os
         output = QgsProcessingUtils.mapLayerFromString(self.output_model, context)
         
         provider = output.dataProvider()
