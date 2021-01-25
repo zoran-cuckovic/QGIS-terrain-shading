@@ -54,7 +54,7 @@ from qgis.core import QgsMessageLog # for testing
 
 class TextureAlgorithm(QgsProcessingAlgorithm):
     """
-    This algorithm simulates ambient lighting over a raster DEM (in input). 
+    This algorithm applies a fractional laplacian filter (sharpening filter) to a raster DEM (in input). 
     """
 
     # Constants used to refer to parameters and outputs. They will be
