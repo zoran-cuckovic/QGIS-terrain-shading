@@ -66,13 +66,12 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
     # calling from the QGIS console.
 
     INPUT = 'INPUT'
-    #DIRECTION= 'DIRECTION'
     RADIUS= 'RADIUS'
     DENOISE = 'DENOISE'
     ANALYSIS_TYPE='ANALYSIS_TYPE'
     OUTPUT = 'OUTPUT'
 
-    ANALYSIS_TYPES = ['Sky-view', 'Openness']
+    ANALYSIS_TYPES = ['Sky-view','Sky-view (symmetric)', 'Openness']
 
     output_model = None #for post-processing
 
@@ -98,8 +97,8 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
             self.RADIUS,
             self.tr('Radius (pixels)'),
             0, # QgsProcessingParameterNumber.Integer = 0
-            5, False, 0, 100))
-
+            7, False, 0, 100))
+        
         self.addParameter(QgsProcessingParameterBoolean(
             self.DENOISE,
             self.tr('Denoise'),
@@ -138,8 +137,10 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
         denoise = self.parameterAsInt(parameters,self.DENOISE, context)        
        
         radius =self.parameterAsInt(parameters,self.RADIUS, context)
-
-        openness = self.parameterAsInt(parameters,self.ANALYSIS_TYPE, context)
+        
+        method = self.parameterAsInt(parameters,self.ANALYSIS_TYPE, context)
+        symmetric = method == 1
+        openness = method == 2
         
         overlap = radius if not denoise else radius +1
              
@@ -164,15 +165,19 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
              
         chunk_slice = (ysize, chunk + 2 * overlap) 
         
-        mx_z = np.zeros( chunk_slice)
+        mx_z = np.zeros(chunk_slice)
         mx_a = np.zeros(mx_z.shape)
-        mx_b = np.zeros(mx_z.shape)
+        if symmetric: mx_b = mx_a
+        else: mx_b = np.zeros(mx_z.shape)
         out =  np.zeros(mx_z.shape)
+        
         
         # intialise the count of lines per pixel
         mx_cnt = np.ones(mx_z.shape)
-        # borders   # main area : 8 lines
-        mx_cnt[:]= 5; mx_cnt[1:-1, 1:-1] = 8
+        # set borders first  
+        mx_cnt[:]= 5 if not symmetric else 3
+        # main area : 8 lines per pixel (or 4 if symmetric algo)
+        mx_cnt[1:-1, 1:-1] = 8 if not symmetric else 4
         # corners
         for v in [(0,0),(-1,-1),(0,-1), (-1,0)]: mx_cnt[v] = 3
                           
@@ -184,7 +189,9 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
             overlap = overlap) :
      
             mx_z[mx_view_in]= dem.ReadAsArray(*gdal_take).astype(float)
-
+            # NODATA : TODO !
+            # mx_z[mx_z == nodata] = 0
+            
             if denoise :
                 mx_a[:]=0
                 for i in range(-1,2):
@@ -193,14 +200,16 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
                         mx_a[view_out] += mx_z[view_in]
                     
                 mx_z = mx_a/9
-                                    
-            
-            # 8 standard lines, we use symetry to optimise
-            for dy, dx in [(0,1), (1,1), (1,0), (1, -1)]:
-                                
-                for r in range (1, radius + 1):
-
-                    view_in, view_out = view(r * dy, r * dx, mx_z[mx_view_in].shape)
+         
+                # 8 standard lines, we use symetry to optimise
+            for dy, dx in [(0,1), (1,0), (1, -1), (1,1)]:
+                
+                mx_a [:] = 0 if not openness else -9999999
+                mx_b [:] = 0 if not openness else -9999999
+                
+                for r in range (1, radius + 1): # we could probably sample over radius, not all pixels are needed
+                                  
+                    view_in, view_out = view(r * dx, r * dy, mx_z[mx_view_in].shape)
 
                     angles = mx_z[view_in] - mx_z[view_out]
                                                    # diagonals         
@@ -208,43 +217,33 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
                     
                     angles /= dist 
                     
-                    if openness and r == 1:
-                        # need to properly intialise the surface
-                        mx_a[view_out], mx_b[view_in] = angles, -angles    
-                    else:  
-                        # sky view : starts with 0
-                        np.maximum(mx_a[view_out], angles, mx_a[view_out])
-                        np.maximum(mx_b[view_in], -angles, mx_b[view_in] )
-                                    
-                out += np.sin(mx_a) + np.sin(mx_b)
-                # ! this is not the same as np.sin ((mx_a + mx_b)/2) !!
-                # average of angles ... se Kokalj et al. 2011 
-                mx_a [:], mx_b [:] = 0, 0  # reset 
+                    # slow functions, perhaps with cumsum would be faster (?)
+                    np.maximum(mx_a[view_out], angles, mx_a[view_out] )
+                    np.maximum(mx_b[view_in], -angles, mx_b[view_in] )
+                
+               # ugly patch, edge values not overwritten...
+               # TODO : better handling of raster edges !
+                if openness: mx_a[mx_a < -99] = 0; mx_b[mx_b < -99] = 0 
+
+                # average of angles: see Kokalj et al. 2011
+                # these operations are costly, however ...
+                out += np.sin(np.arctan(mx_a))          
+                if not symmetric : out += np.sin(np.arctan(mx_b)) 
 
                 counter += 1
                 feedback.setProgress(100 * chunk * (counter/4) /  xsize)
                 if feedback.isCanceled(): sys.exit()
-
-            if openness:
-                 # this is a patch : last chunk is often spilling outside raster edge 
-                 # so, move the edge values to match raster edge
-                end = gdal_take[2]           
-                if end + gdal_take[0] == xsize : 
-                    mx_cnt[:, end-1: end] = mx_cnt[:, -1:] 
-                
-                out /= mx_cnt
-            else: 
-                # don'k know why, but for SVF simple division works better 
-                # (it assumes zero values for non tested directions)
-                out /= 8
             
+            # this is a patch : last chunk is often spilling outside raster edge 
+            # so, move the edge values to match raster edge
+            end = gdal_take[2]           
+            if end + gdal_take[0] == xsize : 
+                mx_cnt[:, end-1: end] = mx_cnt[:, -1:] 
                 
-            # alternative : angles :
-            #out = 1 - (np.arctan(mx_c)* 2 / np.pi )
+            out = 1 - out/mx_cnt
             
-            out = 1 - out
             ds.GetRasterBand(1).WriteArray(out[mx_view_out], * gdal_put[:2])
-            
+                
             out[:]=0 # RESET
 
         ds = None
@@ -299,8 +298,10 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
         h = ( """
                 Ambient occlusion of a locale is the proportion of the ambient light that it may recieve. This algorithm assumes equal light intensity from all directions (simple ambient lighting).
                 Parameters:
-                 - Analysis type: Sky-view option will model the light comming from directions above individual pixels (i.e. from the sky). Openness option allows for light sources situated below the horizontal plane.
-                 - Radius: The ambient occlusion is caluclated within a defined radius for each raster pixel (computation time is directly dependant on the analysis radius)
+                 - Sky-view: models the light comming from 8 directions towards individual pixels (i.e. from the sky).
+                 - Symmetric sky-view: For each pair of opposite directions, take the one with higher horizon. Nice visual effect.
+                 - Openness: allows for light sources situated below the horizontal plane.
+                 - Radius: The ambient occlusion is caluclated within a defined radius for each raster pixel (computation time is directly dependant on the analysis radius).
                  - Denoise: Apply a simple smoothing filter.
                 NB. This algorithm is made for terrain visualisation, it is not appropriate for precise calculation of solar exposition or of incident light.
                 For more information see <a href="https://zoran-cuckovic.github.io/QGIS-terrain-shading/"> the manual </a> and the in-depth <a href=https://landscapearchaeology.org/2020/ambient-occlusion/"> blog post</a>.
