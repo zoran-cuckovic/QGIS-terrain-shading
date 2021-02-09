@@ -50,11 +50,7 @@ class DemShadingProvider(QgsProcessingProvider):
         super().__init__() # should resolve "key error" on unload
         #QgsProcessingProvider.__init__(self)
 
-        # Load algorithms
-        self.alglist =[DemShadingAlgorithm(),  HillshadeAlgorithm(),
-                        OcclusionAlgorithm(),  TpiAlgorithm(),
-	                TextureAlgorithm()]
-        
+
     def load(self):
 
         ProcessingConfig.settingIcons[self.name()] = self.icon()
@@ -82,9 +78,14 @@ class DemShadingProvider(QgsProcessingProvider):
         """
         Loads all algorithms belonging to this provider.
         """
+        
+                # Load algorithms
+        alglist =[DemShadingAlgorithm(),  HillshadeAlgorithm(),
+                  OcclusionAlgorithm(),  TpiAlgorithm(),
+	               TextureAlgorithm()]
+        
         if self.isActive():
-            for alg in self.alglist:
-                self.addAlgorithm( alg )
+            for alg in alglist: self.addAlgorithm( alg )
 
     def isActive(self):
         """Return True if the provider is activated and ready to run algorithms"""
