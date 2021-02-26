@@ -44,7 +44,11 @@ from qgis.core import (QgsProcessing,
                        
 from processing.core.ProcessingConfig import ProcessingConfig
 
-import gdal
+try:
+    from osgeo import gdal
+except ImportError:
+    import gdal
+
 import numpy as np
 
 from .modules import helpers
@@ -62,6 +66,7 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
 
     INPUT = 'INPUT'
     DIRECTION= 'DIRECTION'
+    BIDIRECTIONAL= 'BIDIRECTIONAL'
     ANGLE = 'ANGLE'
     LON_EX ='LONG_EX'
     LAT_EX = 'LAT_EX'
@@ -89,6 +94,11 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
             self.DIRECTION,
             self.tr('Direction (0 to 360°)'),
             1, 315, False, 0, 360))
+        
+        self.addParameter(QgsProcessingParameterBoolean(
+            self.BIDIRECTIONAL,
+            self.tr('Bidirectional hillshade'),
+            False, False)) 
         
         self.addParameter(QgsProcessingParameterNumber(
             self.ANGLE,
@@ -148,42 +158,44 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
 
         direction = self.parameterAsDouble(parameters,self.DIRECTION, context)
 
-        s = 315 - direction  # reverse the sequence and center on 45 (just so...)
-        
+        bidirectional = self.parameterAsInt(parameters,self.BIDIRECTIONAL, context)  
+              
         sun_angle =  self.parameterAsDouble(parameters,self.ANGLE, context)
-        sun_angle = np.radians( 90 - sun_angle) # taking orthogonal angle !!    
+        sun_angle = np.radians( 90 - sun_angle) # taking an orthogonal angle !!    
         
         smooth = self.parameterAsInt(parameters,self.DENOISE, context)     
         byte =  self.parameterAsInt(parameters,self.BYTE_FORMAT, context) 
         
         lat_factor = self.parameterAsDouble(parameters,self.LAT_EX, context)
         lon_factor = self.parameterAsDouble(parameters,self.LON_EX, context)
-                
-        # for two prependicualr vectors, directions can be decomposed according to sin/cos rule
-        a, b = np.cos(np.radians(s)) , np.sin(np.radians(s)) 
         
+        if bidirectional and lat_factor <=1: 
+            err= (" \n ****** \n ERROR! \n Bidirectional hillshade should be used " +
+                  "with lateral exaggeration ! ")
+            feedback.reportError(err, fatalError = False)
+            
+
+        s = 360 - direction  # reverse the sequence (more simple than to fiddle with sin/cos...)
+        
+ #       for two prependicualr vectors, directions can be decomposed according to sin/cos rule
+        a, b = np.cos(np.radians(s)) , np.sin(np.radians(s))     
+       
         if smooth: # larger matrix, same principle ( VERY POOR DENOISING ! )
-            win = np.array([[0, 0, 0,  0, 0],
+            win = np.array([[-1, 0, -2,  0, -1],
                             [ 0, 0, 0, 0, 0],
-                             [0, 0, 0, 0, 1],
+                             [0, 0, 0, 0, 0],
                              [ 0, 0, 0, 0, 0],
-                             [0, 0,  1, 0, 1]]) 
+                             [1, 0, 2, 0, 1]]) 
         
         else: 
 
-            win = np.array([[0, 0 ,0],
-                            [0,  0 , 1],
-                            [0,  1, 1]])  
-    
-    
-            
-        # fipping and flopping to deploy on a 0-360 range     
-#        if steep :  win = win.T
-#
-#        if rev_y : win = np.flipud(win)
-#        if rev_x : win = np.fliplr(win)
+            win = np.array([[-1,  -2 ,-1],
+                            [0,  0 ,0],
+                            [1, 2 ,1]])  
         
-        win2 = np.rot90(win)
+        # perpendicular win : second vector
+        win2 = np.rot90(win) 
+        # for some reason, numpy's rotation is anti-clockwise !!
         
         win_size = win.shape[0]
         
@@ -201,18 +213,14 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
         pixel_dist = dem.GetGeoTransform()[1] * (4 if smooth else 2)
         # for the record : diag_size = pix / np.cos(np.radians(s%45))   
         
-#        # distances for altitude measures 
-#        dist = (win_size - 1) * pixel_size 
-#   
-#        # take weights per pair of mesures because we use altitude differences. 
-#        weights = np.sum(win[win>0]) 
-   
+  
         chunk = int(ProcessingConfig.getSetting('DATA_CHUNK')) * 1000000
         chunk = min(chunk // xsize, xsize)
-       
+ 
         
-        # setting up output writing parameters. 
+        # setting up the output writing parameters. 
         driver = gdal.GetDriverByName('GTiff')
+
         ds = driver.Create(self.output_model, xsize,ysize, 1, 
                            gdal.GDT_Byte if byte else gdal.GDT_Float32)
         ds.SetProjection(dem.GetProjection())
@@ -243,39 +251,57 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
                 view_in, view_out = helpers.view(y - win_size//2, x - win_size//2, mx_z.shape)
                           
                 if weight : 
-                    mx_a[view_out] += mx_z[view_in]  
-                    # mirrored value
-                    mx_a[view_in] -= mx_z[view_out] 
-                    
+                    mx_a[view_out] += mx_z[view_in] * weight
+     
                 w2 = win2[y,x]    
                 if w2: 
-                    mx_a2[view_out] += mx_z[view_in]
-                    mx_a2[view_in] -= mx_z[view_out]
+                    mx_a2[view_out] += mx_z[view_in] * w2
+      
                 
                 counter += 1
                 feedback.setProgress(100 * chunk * (counter/9) /  xsize)
                 if feedback.isCanceled(): sys.exit()
             
-            # slope = dz / dx
-            mx_a /= pixel_dist * 3       
-            mx_a2/=  pixel_dist * 3
+            # slope = dz / dx;
+            p = 1 / (pixel_dist * np.sum(win[win >0])) # take 1/dist to use multiplication
+      
+            # using vector addition to isolate directions, i.e the slope along such directions
+            # (knowing that all but cardinal directions have to be calculated from two vector components)
+            lon_z =  mx_a * (p * a) + mx_a2 * (p * b)
+           
+              # attention :  mx_a * -1 (= reverse direction !)
+            lat_z = mx_a * (p * -b) + mx_a2 * (p * a)
 
+            
             # to adjust slope for sun angle (slope * distance)
             # mx_a -= np.tan(sun_angle) 
             
-            # using vector addition to isolate directions, i.e the slope along such directions
-            # (knowing that all but cardinal directions have to be calculated from two vector components)
             # everything is cast to an angle (atan), which is costly ...
-            lon =  np.arctan((mx_a * a + mx_a2 * b) * lon_factor) - sun_angle
-            # attention :  mx_a * -1 (= reverse direction !)
-            lat =  np.arctan((mx_a * -b + mx_a2 * a) * lat_factor) 
-    
-            # COSINE LAW (Lambertian reflectance)
-            # a shadow below an illuminated object is a parallelogram
-            # with height = cos(inclination) * true_height and 
-            # width = cos(inclination) * true_width
-            out = np.cos(lon) * np.cos(lat)
-            if byte : out *= 255
+            lon = np.arctan(lon_z * lon_factor)
+            lat = np.arctan(lat_z * lat_factor)    
+          
+
+                 
+                # COSINE LAW (Lambertian reflectance)
+                # a shadow below an illuminated object is a parallelogram
+                # with height = cos(inclination) * true_height and 
+                # width = cos(inclination) * true_width
+                
+            out = np.cos(lon - sun_angle) * np.cos(lat)
+            
+            if bidirectional:
+                #acessory direction: swap matrices and factors !
+                #lon = lat etc.
+                lat[:] = np.arctan(lon_z * lat_factor)
+                lon[:] = np.arctan(-lat_z * lon_factor)
+                
+                #add two hillshades
+                out += np.cos(lon - sun_angle) * np.cos(lat) 
+                
+            
+            if byte :
+                if bidirectional :  out /= np.max(out)
+                out *= 255
             
 	    # To be studied : values can be stretched for better contrast, 
 	    # but this may produce unintutuive results in combination with varying sun height
@@ -347,6 +373,8 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
            
             <b>Sun direction</b> and <b>sun angle</b> parmeters define horizontal and vertical position of the light source, where 0° is on the North, 90° on the East and 270° on the West.
 
+            <b>Bidirectional hillshade</b>: combine with a second hillshade, from a perpendicular direction. IMPORTANT: this will work only when lateral terrain exaggeration is set above 1.0. 
+            
             <b>Lateral and longitudinal exaggeration</b> introduce artifical deformations of the elevation model, in order to achieve higher shading contrast.   
                 
             <b>Denoise</b> option is using larger search radius, producing smoother results. 
