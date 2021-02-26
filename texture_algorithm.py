@@ -43,7 +43,11 @@ from qgis.core import (QgsProcessing,
 
 from processing.core.ProcessingConfig import ProcessingConfig
 
-import gdal
+try:
+    from osgeo import gdal
+except ImportError:
+    import gdal
+
 import numpy as np
 import numpy.fft as npfft #T€ST
 
@@ -217,9 +221,9 @@ class TextureAlgorithm(QgsProcessingAlgorithm):
         ce = QgsContrastEnhancement(provider.dataType(1))
         ce.setContrastEnhancementAlgorithm(QgsContrastEnhancement.StretchToMinimumMaximum)
 
-        ce.setMinimumValue(mean-2*sd)
-        ce.setMaximumValue(min(1, mean+2*sd))
-
+        ce.setMinimumValue(mean- .5*sd)
+        ce.setMaximumValue(mean+ .5*sd)
+        
         rnd.setContrastEnhancement(ce)
 
         output.setRenderer(rnd)
