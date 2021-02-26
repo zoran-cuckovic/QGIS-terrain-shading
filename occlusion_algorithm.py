@@ -50,7 +50,11 @@ from qgis.core import (QgsProcessing,
 
 from processing.core.ProcessingConfig import ProcessingConfig
 
-import gdal
+try:
+    from osgeo import gdal
+except ImportError:
+    import gdal
+
 import numpy as np
 from .modules.helpers import view, window_loop
 
