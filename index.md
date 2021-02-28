@@ -61,6 +61,8 @@ This algorithm calculates surface shading - hillshade - for elevation models. Th
 
 *Sun direction* and *sun angle* parmeters define horizontal and vertical position of the light source, where 0° is on the North, 90° on the East and 270° on the West.
 
+*Bidirectional hillshade* combines a standard hillshade with one made from a perpendicular direction. IMPORTANT: this will work only when lateral terrain exaggeration is set above 1.0, preferably at 2.0 or more.
+
 *Lateral and longitudinal exaggeration* introduce artifical deformations of the elevation model, in order to achieve higher shading contrast.
 
 *Denoise* option is using larger search radius, producing smoother results. 
