@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 """
 
 /***************************************************************************
@@ -50,6 +49,7 @@ except ImportError:
     import gdal
 
 import numpy as np
+from .modules import Raster as rs
 from .modules.helpers import window_loop, filter3
 
 class DemShadingAlgorithm(QgsProcessingAlgorithm):
@@ -115,48 +115,54 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
         elevation_model= self.parameterAsRasterLayer(parameters,self.INPUT, context)
 
 
-        if elevation_model.crs().mapUnits() != 0 :
-            err= " \n ****** \n ERROR! \n Raster data should be projected in a metric system!"
-            feedback.reportError(err, fatalError = True)
-            raise QgsProcessingException(err)
-        #could also use:
-        #raise QgsProcessingException(self.invalidSourceError(parameters, self.INPUT))
-
-        if  round(abs(elevation_model.rasterUnitsPerPixelX()),
-                    2) !=  round(abs(elevation_model.rasterUnitsPerPixelY()),2):
-            
-            err= (" \n ****** \n ERROR! \n Raster pixels are irregular in shape " +
-                  "(probably due to incorrect projection)!")
-            feedback.reportError(err, fatalError = True)
-            raise QgsProcessingException(err)
-
         self.output_model = self.parameterAsOutputLayer(parameters,self.OUTPUT,context)
 
         direction = self.parameterAsDouble(parameters,self.DIRECTION, context)
         sun_angle =self.parameterAsDouble(parameters,self.ANGLE, context)
         
         smooth = self.parameterAsInt(parameters,self.SMOOTH, context)
+        
+        
+        
+        dem = rs.Raster(elevation_model)
+        
+        err, fatal = dem.verify_raster()
+        if err: feedback.reportError(err, fatalError = fatal)
 
-        # 2)   --------------- ORIENTATION AND DIMENSIONS -----------------
+        dem.set_output(self.output_model)
+                        # data_format = None : fallback to the general setting
+                        
+        
+         # 2)   --------------- ORIENTATION AND DIMENSIONS -----------------
+         
+        # Fixing WGS bias : rectangular pixels 
+        if dem.pix_x != dem.pix_y and direction % 90:
+            direction = dem.angle_adjustment(direction)
+            
         steep =  (45 <= direction <= 135 or 225 <= direction <= 315)
+        # this is an arbitrary label for steep !
+        
+        s = direction % 90 # simplify to 90 deg range
+        if s > 45: s= 90-s # 
 
-        s = direction % 90
-        if s > 45: s= 90-s
                      
         slope = np.tan(np.radians(s ))# matrix shear slope
+        
         tilt= np.tan(np.radians(sun_angle)) 
-
-        dem = gdal.Open(elevation_model.source())       
+         
             
         # ! attention: x in gdal is y dimension un numpy (the first dimension)
-        xsize, ysize = dem.RasterXSize,dem.RasterYSize
-        # assuming one band dem !
-        nodata = dem.GetRasterBand(1).GetNoDataValue()
+        xsize, ysize = dem.xsize, dem.ysize
         
-        pixel_size = dem.GetGeoTransform()[1]      
-        
-        chunk = int(ProcessingConfig.getSetting('DATA_CHUNK')) * 1000000
-        chunk = min(chunk // (ysize if steep else xsize), (xsize if steep else ysize))
+	# This method enanbles us to handle irregular pixels (eg. WGS lat/lon).
+        # But - irregular pixels also mean that we have to readjust the lighting angle,
+        # for instance, 45° is no longler a simple diagonal  - this is made above 
+        if steep:
+            pixel_size = dem.pix_x * np.cos(np.radians(s)) + dem.pix_y * np.sin(np.radians(s))  
+        else:
+             pixel_size = dem.pix_x * np.sin(np.radians(s)) + dem.pix_y * np.cos(np.radians(s))   
+
+        chunk = min((dem.chunk_y if steep else dem.chunk_x), (xsize if steep else ysize))
 
         if s%45 > 0 :
             # Determine the optimal chunk size (estimate!).
@@ -169,11 +175,7 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
             chunk -= np.argmin(np.round(abs(c), decimals = 2)[::-1])+1
    
         # writing output beforehand, to prepare for data dumps
-        driver = gdal.GetDriverByName('GTiff')
-        ds = driver.Create(self.output_model, xsize,ysize, 1, gdal.GDT_Float32)
-        ds.SetProjection(dem.GetProjection())
-        ds.SetGeoTransform(dem.GetGeoTransform())
-        
+
         # 3) -------   SHEAR MATRIX (INDICES) -------------
         
         chunk_slice = (ysize, chunk) if steep else ( chunk, xsize)
@@ -230,7 +232,7 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
         
       # 4 -----   LOOP THOUGH DATA CHUNKS AND CALCULATE -----------------
         counter = 0   
-        for dem_view, gdal_coords, unused_out, unused_gdal_out in window_loop ( 
+        for mx_view_in, gdal_coords, mx_view_out, gdal_put in window_loop ( 
             shape = (xsize, ysize), 
             chunk = chunk,
             axis = not steep, 
@@ -238,21 +240,21 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
             overlap= 0,
             offset = -1) :
       
-            mx_z[dem_view]=dem.ReadAsArray(*gdal_coords).astype(float)
+            dem.rst.ReadAsArray(*gdal_coords, mx_z[mx_view_in])
                 
             # should handle better NoData !!
             # nans will destroy the accumulation sequence
-            mask = mx_z == nodata
+            mask = mx_z == dem.nodata
             mx_z[mask]= -9999        
        
             mx_temp[src] = mx_z + off
                         
             mx_temp[f] += -last_line # shadows have negative values, so *-1   
         
-	    #accumulate maximum shadow depths
+    	    # accumulate maximum shadow depths
             mx_temp -= np.maximum.accumulate(mx_temp, axis= axis)
 	
-            # first line has shadow od zero depth (nothing to accum), so copy from previous chunk
+            # first line has the shadow of zero depth (nothing to accum), so copy from previous chunk
             mx_temp[f] = last_line 
             
             last_line [:] = mx_temp[l ] # save for later
@@ -262,15 +264,18 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
             if smooth: out = filter3(out)
                 
             out[mask]=np.nan 
-
-            ds.GetRasterBand(1).WriteArray(out[dem_view], * gdal_coords[:2])
+            
+            
+            dem.add_to_buffer(out[mx_view_out], gdal_put,
+                              automatic_save = False ) # auto save - doesn't work with reverse reading
 
             counter += 1
             feedback.setProgress( 100 * chunk * counter / (xsize if steep else ysize))
-            if feedback.isCanceled(): sys.exit()
-           
-               
-        ds = None
+            if feedback.isCanceled(): return{}
+        
+        dem.write_output()
+        # we have to force to write the output - there is an inconsistency due to 
+        # offset = -1, which prevents the automatic save ==> to be fixed !
         
         return {self.OUTPUT: self.output_model}
 
