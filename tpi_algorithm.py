@@ -49,6 +49,7 @@ except ImportError:
 
 import numpy as np
 
+from .modules import Raster as rs
 from .modules.helpers import view, window_loop, filter3
 
 from qgis.core import QgsMessageLog # for testing
@@ -111,67 +112,43 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
             
         elevation_model= self.parameterAsRasterLayer(parameters,self.INPUT, context)
 
-        if elevation_model.crs().mapUnits() != 0 :
-            err= " \n ****** \n ERROR! \n Raster data has to be projected in a metric system!"
-            feedback.reportError(err, fatalError = False)
-           # raise QgsProcessingException(err)
-        #could also use:
-        #raise QgsProcessingException(self.invalidSourceError(parameters, self.INPUT))
-
-        if  round(abs(elevation_model.rasterUnitsPerPixelX()),
-                    2) !=  round(abs(elevation_model.rasterUnitsPerPixelY()),2):
-            
-            err= (" \n ****** \n ERROR! \n Raster pixels are irregular in shape " +
-                  "(probably due to incorrect projection)!")
-            feedback.reportError(err, fatalError = False)
-            #raise QgsProcessingException(err)
-
         self.output_model = self.parameterAsOutputLayer(parameters,self.OUTPUT,context)
 
         denoise = self.parameterAsInt(parameters,self.DENOISE, context)        
        
         radius =self.parameterAsInt(parameters,self.RADIUS, context)
 
-        weighted = self.parameterAsInt(parameters,self.ANALYSIS_TYPE, context)
+        mode = self.parameterAsInt(parameters,self.ANALYSIS_TYPE, context)
+        
+        
+        mode = ['simple', 'height_weighted', 'distance_weighted'][mode]
+        
+        dem = rs.Raster(elevation_model)
+        
+        err, fatal = dem.verify_raster()
+        if err: feedback.reportError(err, fatalError = fatal)
+        
+        dem.set_output(self.output_model ) 
+        
+        # dem.tpi(radius, denoise, mode = modes[mode], feedback_handle=feedback)
+       
         
         overlap = radius if not denoise else radius +1
-
-        dem = gdal.Open(elevation_model.source())
-          
-        # ! attention: x in gdal is y dimension un numpy (the first dimension)
-        xsize, ysize = dem.RasterXSize,dem.RasterYSize
-        # assuming one band dem !
-        nodata = dem.GetRasterBand(1).GetNoDataValue()
         
-        pixel_size = dem.GetGeoTransform()[1]
-        
-   
-        chunk = int(ProcessingConfig.getSetting('DATA_CHUNK')) * 1000000
-        chunk = min(chunk // xsize, xsize)
-
-        
-        # writing output to dump data chunks
-        driver = gdal.GetDriverByName('GTiff')
-        ds = driver.Create(self.output_model, xsize,ysize, 1, gdal.GDT_Float32)
-        ds.SetProjection(dem.GetProjection())
-        ds.SetGeoTransform(dem.GetGeoTransform())
-        
-             
-        chunk_slice = (ysize, chunk + 2 * overlap) 
+        chunk_slice = (dem.ysize, dem.chunk_x + 2 * overlap)
         
         # define empty matrices to hold data : faster
         mx_z = np.zeros( chunk_slice)
         mx_a = np.zeros(mx_z.shape)
+        mx_cnt = np.zeros(mx_z.shape)
         
-        if weighted ==1 :
-            mx_cnt = np.zeros(mx_z.shape)    
+        # pre-calculate number of visits per cell (cannot be done for height based weights)
+        if mode != 'height_weighted' : 
             
-        else: 
-            #pre-calculate number of visits per cell 
             sy, sx = mx_z.shape
             c1, c2 = np.mgrid[0 : sy, 0 : sx]
             
-            if weighted == 2:
+            if mode == 'distance_weighted':
                 c1, c2 = np.cumsum(c1, axis = 0), np.cumsum(c2, axis=1)
                 max_val = sum([i for i in range(radius+1)])
             
@@ -184,23 +161,22 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
             np.minimum(c1, c1[::-1,:], c1); np.minimum(c2, c2[:, ::-1], c2)
            
             # corner = 3 * radius pixels (we have a star shaped window)
-            mx_cnt =  max_val * 3 + c1*2 + c2*2 + np.minimum (c1, c2) 
+            mx_cnt[:] =  max_val * 3 + c1*2 + c2*2 + np.minimum (c1, c2) 
+            # adjust for diagonal weights (half of values)
+            if mode == 'simple': mx_cnt += mx_cnt / 2 * .4142
             
-          
-
         counter = 0
 
-        
         #Loop through data chunks (and write results)
         for mx_view_in, gdal_take, mx_view_out, gdal_put in window_loop ( 
-            shape = (xsize, ysize), 
-            chunk = chunk,
+            shape = (dem.xsize, dem.ysize), 
+            chunk = dem.chunk_x,
             overlap = overlap) :
 
             mx_a[:]=0
-            if weighted == 1: mx_cnt[:]=0   
+            if mode == 'height_weighted' : mx_cnt[:]=0   
             
-            mx_z[mx_view_in]= dem.ReadAsArray(*gdal_take).astype(float)
+            dem.rst.ReadAsArray(*gdal_take, mx_z[mx_view_in]).astype(float)
             
             if denoise : mx_z = filter3(mx_z)
                 
@@ -218,37 +194,35 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
                     z, z2 = mx_z[view_in], mx_z[view_in2] 
                     
                     # use distance (r) or height diffrence as weight
-                    if weighted :
-                        if weighted == 1 :
+                    if mode != 'simple'  :
+                        if mode == 'height_weighted' :
                             w = abs (z - z2)
                             # cannot precalculate these weights
                             mx_cnt[view_out] += w
                             mx_cnt[view_out2] += w
                             
                         else:  w = r 
-                    # x1 should not introduce significant overhead, in theory...
-                    else : w =1
+                    # simple TPI: adjust for diagonals [speed: not a crucial loss]
+                    else : w = 1 if dx * dy == 0 else 1.4142
                     
                     mx_a[view_out] += z * w 
                     mx_a[view_out2] += z2 * w 
                         
-                counter += 1
-                
-                prog = chunk * (counter/8) /  xsize
+                counter += 1 
+                prog = dem.chunk_x * (counter/4) / dem.xsize
                 feedback.setProgress(100 * prog)
-                if feedback.isCanceled(): sys.exit()
+                if feedback.isCanceled(): return{}
             
-            # this is a patch : last chunk is often spilling outside raster edge 
+            # this is a patch : the last chunk is often spilling outside raster edge 
             # so, move the edge values to match raster edge
             end = gdal_take[2]           
-            if weighted != 1 and end + gdal_take[0] == xsize : 
+            if mode != 'height_weighted' and end + gdal_take[0] == dem.xsize : 
                 mx_cnt[:, end -radius : end] = mx_cnt[ : , -radius : ]
             
             mx_z -=  mx_a / mx_cnt # weighted mean !
             out = mx_z
-            ds.GetRasterBand(1).WriteArray(out[mx_view_out], * gdal_put[:2])
-
-        ds = None
+            
+            dem.add_to_buffer(out[mx_view_out], gdal_put)
         
         return {self.OUTPUT: self.output_model}
 
@@ -265,7 +239,7 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
         ce.setContrastEnhancementAlgorithm(QgsContrastEnhancement.StretchToMinimumMaximum)
 
         ce.setMinimumValue(mean-2*sd)
-        ce.setMaximumValue(min(1, mean+2*sd))
+        ce.setMaximumValue(mean+2*sd)
 
         rnd.setContrastEnhancement(ce)
 
