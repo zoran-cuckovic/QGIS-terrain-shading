@@ -40,23 +40,26 @@ def view (offset_y, offset_x, shape, step=1, edge=0):
     return np.s_[y_in, x_in], np.s_[y_out, x_out]
 
 
-def window_loop (shape, chunk, axis = 0, reverse = False, overlap = 0, offset = 0):
+def window_loop (shape, chunk, 
+                 axis = 0, reverse = False, overlap = 0, offset = 0):
             """
             Construct a frame to extract chunks of data from gdal
             (and to insert them properly to a numpy matrix)
             """
-            xsize, ysize = shape if axis==0 else shape[::-1]
-
-            if reverse :
-                steps = np.arange(xsize // chunk, -1, -1 )
-                begin = xsize
+            xsize, ysize = shape if axis == 0 else shape[::-1]
+                        
+            if reverse : 
+                begin, step, stride = xsize, 1 + xsize // chunk, -1
             else: 
-                steps = np.arange(1, xsize // chunk +2 )
-                begin =0
+                begin, step, stride = 0, 0, 1
 
             x, y, x_off, y_off = 0,0, xsize, ysize
-
-            for step in steps:
+            
+            end = 1
+            
+            while xsize > end > 0 : 
+           
+                step += stride
 
                 end = min(int(chunk * step), xsize)
                 
@@ -101,19 +104,43 @@ def window_loop (shape, chunk, axis = 0, reverse = False, overlap = 0, offset = 
                 out_view = np.s_[:, sx] if not axis else np.s_[sx , :]
           
                 yield in_view, gdal_take, out_view, gdal_put
+
+
+# ======= TODO : a class to handle filtering ==============
+#class Convolve:
+#               - 3x3 filter
+#               - hillshade filters
+#               - tpi filters
+#               - ? occlusion directed filter
                 
-                
-def filter3 (raster, average=True):
+def filter3 (raster, mode='average'):
+    """
+    A pply a 3x3 filter.
+    Modes : simple, average, laplacian
+    """
+    average = mode == 'average'
+    laplace = mode == 'laplacian'
     
     temp_matrix = np.zeros(raster.shape)
     
-    if average : temp_count = np.zeros(raster.shape)
+    if average : 
+        temp_count = np.zeros(raster.shape)
+        # set borders first  
+        temp_count[:]= 6
+        # main area : 9 points to test 
+        temp_count[1:-1, 1:-1] = 9
+        # corners
+        for v in [(0,0),(-1,-1),(0,-1), (-1,0)]: temp_count[v] = 4
+                          
     
     for i in range(-1,2):
         for j in range(-1,2):
             view_in, view_out = view(i , j ,raster.shape)
-            temp_matrix[view_out] += raster[view_in]
-            if average : temp_count[view_out] += 1
+            
+            z= raster[view_in]
+            if laplace and i==0 and j==0: 
+                z = z * -8  # this is a view, do not *=
+            temp_matrix[view_out] += z        
                     
     if average: temp_matrix /= temp_count
     return temp_matrix
