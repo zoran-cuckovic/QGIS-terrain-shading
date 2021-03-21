@@ -4,7 +4,7 @@
 name=Terrain Shading
 qgisMinimumVersion=3.0
 description=Shading algorithms for terrain analysis and visualisation.
-version=0.9
+version=0.9.1
 author=Zoran Čučković
 email=cuckovic.zoran@gmail.com
 
@@ -17,7 +17,9 @@ repository=https://github.com/zoran-cuckovic/QGIS-terrain-shading
 # Recommended items:
 
 # Uncomment the following line and add your changelog:
-# changelog=
+changelog="All functionality has been reorganised so that the maximum of calculations 
+may be made in live memory. Adjustements for Lat/Lon datasets have also been incorporated."
+
 
 # Tags are comma separated with spaces allowed
 tags=raster, hillshade, shadows, ambient occlusion, sky-view factor
@@ -26,7 +28,7 @@ homepage=https://zoran-cuckovic.github.io/QGIS-terrain-shading
 category=Raster Analysis
 icon=icon.png
 # experimental flag
-experimental=False
+experimental=True
 
 # deprecated flag (applies to the whole plugin, not just a single version)
 deprecated=False
