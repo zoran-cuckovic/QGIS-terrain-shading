@@ -61,6 +61,12 @@ class DemShadingProvider(QgsProcessingProvider):
         ProcessingConfig.addSetting(
             Setting(self.name(), 'DATA_CHUNK',
                                     'Data chunk size (megapixels)', 5))
+        ProcessingConfig.addSetting(
+            Setting(self.name(), 'CONVERT_INT',
+                    'Convert results to integer values (saves space)', False))
+        ProcessingConfig.addSetting(
+            Setting(self.name(), 'BUFFER_SIZE',
+                                    'Total buffer size (megapixels)', 500))
 									
         ProcessingConfig.readSettings()
         self.refreshAlgorithms()
