@@ -49,10 +49,10 @@ except ImportError:
     import gdal
 
 import numpy as np
-import numpy.fft as npfft #T€ST
 
+from .modules import Raster as rs
+from .modules.helpers import window_loop, nextprod
 
-from .modules.helpers import view, window_loop, filter3, nextprod
 
 from qgis.core import QgsMessageLog # for testing
 
@@ -116,54 +116,36 @@ class TextureAlgorithm(QgsProcessingAlgorithm):
         self.output_model = self.parameterAsOutputLayer(parameters,self.OUTPUT,context)
        
         alpha =self.parameterAsDouble(parameters,self.ALPHA, context)
-
         
-        dem = gdal.Open(elevation_model.source())
+                
+        dem = rs.Raster(elevation_model)
         
-        # ! attention: x in gdal is y dimension un numpy (the first dimension)
-        xsize, ysize = dem.RasterXSize,dem.RasterYSize
-        # assuming one band dem !
-        nodata = dem.GetRasterBand(1).GetNoDataValue()
-         # problems when noadata is nan, etc. 
-         # this is for soft errors, not for calculation
-#        try: 
-#            if nodata < -9990: nodata = -9990
-#        # PRBLEM NODATA AS NONE  POZEGA !
-#        except: pass
+        err, fatal = dem.verify_raster()
+        if err: feedback.reportError(err, fatalError = fatal)
         
-        pixel_size = dem.GetGeoTransform()[1]
+        dem.set_output(self.output_model ) 
         
-        rmin, rmax, rmean, rSD = dem.GetRasterBand(1).GetStatistics(0,1)[:4]
-
- 
-        chunk = int(ProcessingConfig.getSetting('DATA_CHUNK')) * 1000000
+      #  dem.texture(alpha, feedback_handle=feedback)
         
-        chunk_x = min(chunk // xsize, xsize) 
-        chunk_slice_x = (ysize, chunk_x ) 
-            
-        chunk_y = min(ysize, chunk // ysize) 
-        chunk_slice_y = (chunk_y, xsize) 
+        chunk_slice_x = (dem.ysize, dem.chunk_x ) 
+        chunk_slice_y = (dem.chunk_y, dem.xsize) 
               
         # define empty matrices to hold data : faster
         mx_z_x = np.zeros( chunk_slice_x)
         mx_z_y = np.zeros( chunk_slice_y)
+        
    
-        Ny, Nx = nextprod([2, 3, 5, 7], ysize) , nextprod([2, 3, 5, 7], xsize)
-        fy = npfft.rfftfreq(Ny)[:, np.newaxis].astype(mx_z_y.dtype)
-        fx = npfft.rfftfreq(Nx)[np.newaxis, :].astype(mx_z_x.dtype)
+   
+        Ny = nextprod([2, 3, 5, 7], dem.ysize) 
+        Nx = nextprod([2, 3, 5, 7], dem.xsize)
+        fy = np.fft.rfftfreq(Ny)[:, np.newaxis].astype(mx_z_y.dtype)
+        fx = np.fft.rfftfreq(Nx)[np.newaxis, :].astype(mx_z_x.dtype)
         
         # this is not the correct formula ; orginally :
         # H = (fy**2 + fx**2 ) ** (alpha / 2.0)
-        # Now, (a + b)^2 = a^2 + b^2 + 2ab .... 
         # when alpha = 1 : the result is identical (i.e. pure laplacian filter)
         Hy, Hx = ((fy** 2) ** alpha)  , ((fx ** 2) ** alpha)
-              
-            # writing output to dump data chunks
-        driver = gdal.GetDriverByName('GTiff')
-        ds = driver.Create(self.output_model, xsize,ysize, 1, gdal.GDT_Float32)
-        ds.SetProjection(dem.GetProjection())
-        ds.SetGeoTransform(dem.GetGeoTransform())
-        
+                     
         counter = 0
         
         # Break the operation to two axes (x, y) : this works fine for laplacian filter,
@@ -171,42 +153,37 @@ class TextureAlgorithm(QgsProcessingAlgorithm):
         # the result is only very slightly degraded for alpha = 0.5 ...
         for axis in [0,1]:
             if axis:
-                chunk = chunk_y
+                chunk = dem.chunk_y
                 mx_z = mx_z_y
                 N, H = Nx, Hx # bit messy x, y swaps..
             else: 
-                chunk = chunk_x
+                chunk = dem.chunk_x
                 mx_z = mx_z_x
                 N, H = Ny, Hy 
        
             for mx_view_in, gdal_take, mx_view_out, gdal_put in window_loop ( 
-                    shape = (xsize, ysize), 
+                    shape = (dem.xsize, dem.ysize), 
                     chunk = chunk,
                     axis = axis) :
                 
-                mx_z[mx_view_in]=dem.ReadAsArray(*gdal_take).astype(float)
-                               
-                r = npfft.rfft( mx_z, N, axis=axis) * H
-                r = npfft.irfft(r, axis=axis)
+                dem.rst.ReadAsArray(*gdal_take, mx_z[mx_view_in])
+                                               
+                r = np.fft.rfft( mx_z, N, axis=axis) * H
+                r = np.fft.irfft(r, axis=axis)
                 
                 # Return the same size as input
                 out = r [:mx_z.shape[0], :mx_z.shape[1]]
                 
-                if axis : # SECOND ROUND, add old data
-                    out[mx_view_in] += ds.ReadAsArray(*gdal_take) 
-            
-                ds.GetRasterBand(1).WriteArray(out[mx_view_out], * gdal_put[:2])
-                
-                
+                # axis = 1 : second round, add old data
+                dem.add_to_buffer(out[mx_view_out], gdal_put, 
+                                   mode = rs.ADD if axis else rs.DUMP, 
+                                   automatic_save = axis)
+          
                 counter += 1
-                feedback.setProgress(100 * chunk * (counter / ( xsize + ysize)))
+                feedback.setProgress(100 * chunk * (counter / (dem.xsize + dem.ysize)))
                 if feedback.isCanceled(): return{}
-            
-            
-            ds.FlushCache() #important, to save gdal dataset to disk!
         
-        ds = None
-        
+#        
         return {self.OUTPUT: self.output_model}
 
     def postProcessAlgorithm(self, context, feedback):
@@ -221,8 +198,8 @@ class TextureAlgorithm(QgsProcessingAlgorithm):
         ce = QgsContrastEnhancement(provider.dataType(1))
         ce.setContrastEnhancementAlgorithm(QgsContrastEnhancement.StretchToMinimumMaximum)
 
-        ce.setMinimumValue(mean- .5*sd)
-        ce.setMaximumValue(mean+ .5*sd)
+        ce.setMinimumValue(mean - sd)
+        ce.setMaximumValue(mean + sd)
         
         rnd.setContrastEnhancement(ce)
 
