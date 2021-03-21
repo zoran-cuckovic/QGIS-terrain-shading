@@ -56,7 +56,9 @@ except ImportError:
     import gdal
 
 import numpy as np
-from .modules.helpers import view, window_loop
+
+from .modules import Raster as rs
+from .modules.helpers import view, window_loop, filter3
 
 from qgis.core import QgsMessageLog # for testing
 
@@ -143,39 +145,27 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
         radius =self.parameterAsInt(parameters,self.RADIUS, context)
         
         method = self.parameterAsInt(parameters,self.ANALYSIS_TYPE, context)
+          
+        dem = rs.Raster(elevation_model)
+        
+        err, fatal = dem.verify_raster()
+        if err: feedback.reportError(err, fatalError = fatal)
+
+        dem.set_output(self.output_model)
+                       
         symmetric = method == 1
         openness = method == 2
         
         overlap = radius if not denoise else radius +1
              
-        dem = gdal.Open(elevation_model.source())
-          
-        # ! attention: x in gdal is y dimension un numpy (the first dimension)
-        xsize, ysize = dem.RasterXSize,dem.RasterYSize
-        #assuming one band dem !
-        nodata = dem.GetRasterBand(1).GetNoDataValue()
-        
-        pixel_size = dem.GetGeoTransform()[1]
-        
-        chunk = int(ProcessingConfig.getSetting('DATA_CHUNK')) * 1000000
-        chunk = min(chunk // xsize, xsize)
-        
-        # writing output to dump data chunks
-        driver = gdal.GetDriverByName('GTiff')
-        ds = driver.Create(self.output_model, xsize,ysize, 1, gdal.GDT_Float32)
-        ds.SetProjection(dem.GetProjection())
-        ds.SetGeoTransform(dem.GetGeoTransform())
-        
-             
-        chunk_slice = (ysize, chunk + 2 * overlap) 
-        
+        chunk_slice = (dem.ysize, dem.chunk_x + 2 * overlap)
+                        
         mx_z = np.zeros(chunk_slice)
         mx_a = np.zeros(mx_z.shape)
         if symmetric: mx_b = mx_a
         else: mx_b = np.zeros(mx_z.shape)
         out =  np.zeros(mx_z.shape)
-        
-        
+                
         # intialise the count of lines per pixel
         mx_cnt = np.ones(mx_z.shape)
         # set borders first  
@@ -188,36 +178,36 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
         counter = 0
             
         for mx_view_in, gdal_take, mx_view_out, gdal_put in window_loop ( 
-            shape = (xsize, ysize), 
-            chunk = chunk,
+            shape = (dem.xsize, dem.ysize), 
+            chunk = dem.chunk_x,
             overlap = overlap) :
-     
-            mx_z[mx_view_in]= dem.ReadAsArray(*gdal_take).astype(float)
+            
+                       
+            if counter : out[:] = 0 # reset
+            
+            dem.rst.ReadAsArray(*gdal_take, mx_z[mx_view_in]).astype(float)
             # NODATA : TODO !
             # mx_z[mx_z == nodata] = 0
             
-            if denoise :
-                mx_a[:]=0
-                for i in range(-1,2):
-                    for j in range(-1,2):
-                        view_in, view_out = view(i , j ,mx_z.shape)
-                        mx_a[view_out] += mx_z[view_in]
-                    
-                mx_z = mx_a/9
-         
-                # 8 standard lines, we use symetry to optimise
+            if denoise : mx_z = filter3(mx_z)
+
+            # 8 standard lines, we use symmetry to optimise
             for dy, dx in [(0,1), (1,0), (1, -1), (1,1)]:
                 
                 mx_a [:] = 0 if not openness else -9999999
                 mx_b [:] = 0 if not openness else -9999999
                 
-                for r in range (1, radius + 1): # we could probably sample over radius, not all pixels are needed
+                if dx * dy == 0 : pix = max(dem.pix_x * dx, dem.pix_y * dy) 
+                else: pix =  dem.pix_diag
+                
+                for r in range (1, radius + 1): 
+                    # we could probably sample over radius, not all pixels are needed...
                                   
                     view_in, view_out = view(r * dx, r * dy, mx_z[mx_view_in].shape)
 
                     angles = mx_z[view_in] - mx_z[view_out]
                                                    # diagonals         
-                    dist = r * pixel_size * (1.4142 if dx * dy != 0 else 1) 
+                    dist = r * pix
                     
                     angles /= dist 
                     
@@ -235,23 +225,19 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
                 if not symmetric : out += np.sin(np.arctan(mx_b)) 
 
                 counter += 1
-                feedback.setProgress(100 * chunk * (counter/4) /  xsize)
-                if feedback.isCanceled(): sys.exit()
+                
+                feedback.setProgress(100 * dem.chunk_x * (counter/4) /  dem.xsize)
+                if feedback.isCanceled(): return {}
             
             # this is a patch : last chunk is often spilling outside raster edge 
             # so, move the edge values to match raster edge
             end = gdal_take[2]           
-            if end + gdal_take[0] == xsize : 
+            if end + gdal_take[0] == dem.xsize : 
                 mx_cnt[:, end-1: end] = mx_cnt[:, -1:] 
                 
             out = 1 - out/mx_cnt
+            dem.add_to_buffer(out[mx_view_out], gdal_put)
             
-            ds.GetRasterBand(1).WriteArray(out[mx_view_out], * gdal_put[:2])
-                
-            out[:]=0 # RESET
-
-        ds = None
-        
         return {self.OUTPUT: self.output_model}
 
     def postProcessAlgorithm(self, context, feedback):
