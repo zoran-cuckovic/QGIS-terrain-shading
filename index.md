@@ -2,6 +2,8 @@
 
 **Current stable version: 0.9** (February 2021)
 
+**Current experimental version: 0.9.1** (March 2021)
+
 **Supported QGIS version: 3.x**
 
 **Repository and download: [github.com/zoran-cuckovic/QGIS-terrain-shading](https://github.com/zoran-cuckovic/QGIS-terrain-shading)**
