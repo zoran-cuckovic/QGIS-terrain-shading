@@ -288,10 +288,10 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
         h = ( """
                 Ambient occlusion of a locale is the proportion of the ambient light that it may recieve. This algorithm assumes equal light intensity from all directions (simple ambient lighting).
                 Parameters:
-                 - Sky-view: models the light comming from 8 directions towards individual pixels (i.e. from the sky).
+                 - Sky-view: models the light coming from 8 directions towards individual pixels (i.e. from the sky).
                  - Symmetric sky-view: For each pair of opposite directions, take the one with higher horizon. Nice visual effect.
                  - Openness: allows for light sources situated below the horizontal plane.
-                 - Radius: The ambient occlusion is caluclated within a defined radius for each raster pixel (computation time is directly dependant on the analysis radius).
+                 - Radius: The ambient occlusion is calculated within a defined radius for each raster pixel (computation time is directly dependent on the analysis radius).
                  - Denoise: Apply a simple smoothing filter.
                 NB. This algorithm is made for terrain visualisation, it is not appropriate for precise calculation of solar exposition or of incident light.
                 For more information see <a href="https://zoran-cuckovic.github.io/QGIS-terrain-shading/"> the manual </a> and the in-depth <a href=https://landscapearchaeology.org/2020/ambient-occlusion/"> blog post</a>.
