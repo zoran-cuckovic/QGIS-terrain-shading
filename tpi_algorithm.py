@@ -272,12 +272,12 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
     def shortHelpString(self):
         curr_dir = path.dirname(path.realpath(__file__))
         h = ( """
-             Topographic position index is expressing the relative height of each elevation point within a specified radius. 
+             Topographic position index expresses the relative height of each elevation point within a specified radius. 
              
             <b>Input</b> should be an elevation model in raster format. 
             
            
-            <b>Radius</b> is determing the search radius (in pixels).
+            <b>Radius</b> defines the search radius (in pixels).
 
             There are 3 <b>analysis types</b>: 1) standard TPI, 2) distance weighted and 3) height weighted. Weighted options use elevation point distance or height discrepancy as weighting factor.   
             
