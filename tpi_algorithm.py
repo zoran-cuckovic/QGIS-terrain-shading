@@ -132,9 +132,7 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
         radius = self.parameterAsInt(parameters,self.RADIUS, context)
 
         mode = self.parameterAsInt(parameters,self.ANALYSIS_TYPE, context)
-        
-        mode = self.ANALYSIS_TYPES[mode]
-
+    
         denoise = self.parameterAsInt(parameters,self.DENOISE, context) 
         
         offset_dist = self.parameterAsInt(parameters,self.OFFSET_DISTANCE, context)
@@ -178,8 +176,8 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
         # Therefore no need to loop over opposite directions (here N and W)
         directions = [(0,1, offset_y),  (1,0, offset_x)] # orthogonal directions 
         if denoise: directions += [(1,1, offset_y_diag), (1, -1, offset_x_diag)]
-            
-        precalc = not offset_x and not offset_y and mode != 'height_weighted' 
+                                                    # 'height_weighted' 
+        precalc = not offset_x and not offset_y and mode != 2
         # pre-calculate the number of visits per cell 
         # (cannot be done for height based weights)
         # Considering mass displacement mode, the problem is to handle edges -> 
@@ -189,7 +187,7 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
             sy, sx = mx_z.shape
             c1, c2 = np.mgrid[0 : sy, 0 : sx]
             
-            if mode == 'distance_weighted':
+            if mode == 1: # 'distance_weighted':
                 c1, c2 = np.cumsum(c1, axis = 0), np.cumsum(c2, axis=1)
                 max_val = sum([i for i in range(radius + 1)])
             else: 
@@ -228,12 +226,10 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
                     
                     z, z2 = mx_z[view_in], mx_z[view_in2] 
                     
-                    # use distance (r) or height diffrence as weight
-                    if mode == 'height_weighted' :
-                        w = abs (z - z2) 
-                    else:
-                        w = r if mode == 'distance_weighted' else 1   
-                   # diagonal distance correction
+                    if mode == 2 :   w = abs (z - z2) # 'height_weighted' :
+                    elif mode == 1 : w = r #  'distance_weighted'
+                    else:            w = 1 # no weight
+                    # diagonal distance correction
                     if dx * dy != 0 : w /= 1.4142 
                    # NB - this is very expensive for heights: we can divide the entire DEM, 
                    # but we still need to keep the original for subtraction 
