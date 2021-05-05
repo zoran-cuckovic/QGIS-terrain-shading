@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 """
 
 /***************************************************************************
@@ -154,14 +155,15 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
         # ! attention: x in gdal is y dimension un numpy (the first dimension)
         xsize, ysize = dem.xsize, dem.ysize
         
-	# This method enanbles us to handle irregular pixels (eg. WGS lat/lon).
-        # But - irregular pixels also mean that we have to readjust the lighting angle,
-        # for instance, 45° is no longler a simple diagonal  - this is made above 
         if steep:
             pixel_size = dem.pix_x * np.cos(np.radians(s)) + dem.pix_y * np.sin(np.radians(s))  
         else:
              pixel_size = dem.pix_x * np.sin(np.radians(s)) + dem.pix_y * np.cos(np.radians(s))   
-
+        # ATTENTION : this method enanbles us to handle irregular pixels (eg. WGS lat/lon)
+        # BUT - irregular pixels also mean that we have to readjust the lighting angle !
+        # For instance, 45° is no longler a simple diagonal  - TODO !! 
+            
+    
         chunk = min((dem.chunk_y if steep else dem.chunk_x), (xsize if steep else ysize))
 
         if s%45 > 0 :
