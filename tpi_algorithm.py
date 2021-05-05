@@ -35,6 +35,7 @@ from qgis.core import (QgsProcessing,
                         QgsProcessingParameterBoolean,
                       QgsProcessingParameterNumber,
                        QgsProcessingParameterEnum,
+                       QgsProcessingParameterMatrix,
                        QgsProcessingUtils,
                         QgsRasterBandStats,
                        QgsSingleBandGrayRenderer,
@@ -67,9 +68,11 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
     RADIUS= 'RADIUS'
     DENOISE = 'DENOISE'
     ANALYSIS_TYPE='ANALYSIS_TYPE'
+    OFFSET_DISTANCE = 'OFFSET_DISTANCE'
+    OFFSET_AZIMUTH= 'OFFSET_AZIMUTH'
     OUTPUT = 'OUTPUT'
 
-    ANALYSIS_TYPES = ['Simple', 'Height weighted', 'Distance weighted']
+    ANALYSIS_TYPES = ['Simple',  'Distance weighted', 'Height weighted']
 
     output_model = None #for post-processing
 
@@ -93,14 +96,26 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
                     
         self.addParameter(QgsProcessingParameterNumber(
             self.RADIUS,
-            self.tr('Radius (pixels)'),
+            self.tr('Radius in pixels'),
             0, # QgsProcessingParameterNumber.Integer = 0
             5, False, 0, 100))
-
+        
+        self.addParameter(QgsProcessingParameterNumber(
+            self.OFFSET_DISTANCE,
+            self.tr('Center of mass: offset in pixels (< radius)'),
+            0, # QgsProcessingParameterNumber.Integer = 0
+            0, False, 0, 1000))
+        
+        self.addParameter(QgsProcessingParameterNumber(
+            self.OFFSET_AZIMUTH,
+            self.tr('Center of mass: azimuth'),
+            0, # QgsProcessingParameterNumber.Integer = 0
+            45, False, 0, 360))
+        
         self.addParameter(QgsProcessingParameterBoolean(
             self.DENOISE,
             self.tr('Denoise'),
-            False, False)) 
+            True, False)) 
         
         self.addParameter(
             QgsProcessingParameterRasterDestination(
@@ -113,26 +128,39 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
         elevation_model= self.parameterAsRasterLayer(parameters,self.INPUT, context)
 
         self.output_model = self.parameterAsOutputLayer(parameters,self.OUTPUT,context)
-
-        denoise = self.parameterAsInt(parameters,self.DENOISE, context)        
-       
-        radius =self.parameterAsInt(parameters,self.RADIUS, context)
+        
+        radius = self.parameterAsInt(parameters,self.RADIUS, context)
 
         mode = self.parameterAsInt(parameters,self.ANALYSIS_TYPE, context)
         
+        mode = self.ANALYSIS_TYPES[mode]
+
+        denoise = self.parameterAsInt(parameters,self.DENOISE, context) 
         
-        mode = ['simple', 'height_weighted', 'distance_weighted'][mode]
-        
+        offset_dist = self.parameterAsInt(parameters,self.OFFSET_DISTANCE, context)
+        if offset_dist >= radius :
+            err= (" \n ****** \n ERROR! \n Center of mass is beyond the analysis range: " +
+                  "offset distance should be less than radius!")
+            feedback.reportError(err, fatalError = False)
+            raise QgsProcessingException(err)
+            offset_dist = radius - 1
+            
+        # Reverse the angle direction : this is required because the algorithm 
+        # is organised in corresopndance to numpy matrix ordering (y first and descending). 
+        offset_azimuth = 360 - self.parameterAsInt(parameters,self.OFFSET_AZIMUTH, context)
+        # decompose angle and distance to pixel coords
+        offset_x = int(offset_dist * np.sin(np.radians(offset_azimuth)))
+        offset_y = int(offset_dist * np.cos(np.radians(offset_azimuth)))
+        offset_x_diag = int(offset_dist * np.sin(np.radians(offset_azimuth - 45)))
+        offset_y_diag = int(offset_dist * np.cos(np.radians(offset_azimuth - 45)))
+               
         dem = rs.Raster(elevation_model)
         
         err, fatal = dem.verify_raster()
         if err: feedback.reportError(err, fatalError = fatal)
         
-        dem.set_output(self.output_model ) 
-        
-        # dem.tpi(radius, denoise, mode = modes[mode], feedback_handle=feedback)
-       
-        
+        dem.set_output(self.output_model) 
+            
         overlap = radius if not denoise else radius +1
         
         chunk_slice = (dem.ysize, dem.chunk_x + 2 * overlap)
@@ -142,16 +170,28 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
         mx_a = np.zeros(mx_z.shape)
         mx_cnt = np.zeros(mx_z.shape)
         
-        # pre-calculate number of visits per cell (cannot be done for height based weights)
-        if mode != 'height_weighted' : 
+        # Lines that will be searched, radiating from each pixel.
+        # Denoise option : a star shaped configuration (N, NE, E, SE etc)
+        # For more directions : step = 0.5; 0.25; etc
+        # !! We exploit symetry, pixel pairs are neighbours to each other,
+        # but in opposite directions (N-S, E-W etc.)
+        # Therefore no need to loop over opposite directions (here N and W)
+        directions = [(0,1, offset_y),  (1,0, offset_x)] # orthogonal directions 
+        if denoise: directions += [(1,1, offset_y_diag), (1, -1, offset_x_diag)]
             
+        precalc = not offset_x and not offset_y and mode != 'height_weighted' 
+        # pre-calculate the number of visits per cell 
+        # (cannot be done for height based weights)
+        # Considering mass displacement mode, the problem is to handle edges -> 
+        # they have shorter radiuses and are not always affested by displacement ...
+        if precalc:
+
             sy, sx = mx_z.shape
             c1, c2 = np.mgrid[0 : sy, 0 : sx]
             
             if mode == 'distance_weighted':
                 c1, c2 = np.cumsum(c1, axis = 0), np.cumsum(c2, axis=1)
-                max_val = sum([i for i in range(radius+1)])
-            
+                max_val = sum([i for i in range(radius + 1)])
             else: 
                 max_val = radius
                          
@@ -160,11 +200,11 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
             # reverse and find distances to back edges
             np.minimum(c1, c1[::-1,:], c1); np.minimum(c2, c2[:, ::-1], c2)
            
-            # corner = 3 * radius pixels (we have a star shaped window)
-            mx_cnt[:] =  max_val * 3 + c1*2 + c2*2 + np.minimum (c1, c2) 
-            # adjust for diagonal weights (half of values)
-            if mode == 'simple': mx_cnt += mx_cnt / 2 * .4142
-            
+            mx_cnt[:] = c1 + c2 + max_val * 2 # orthogonal mode
+            if denoise: # diagonal mode
+                diag =  c1 + c2 + np.minimum (c1, c2) + max_val 
+                mx_cnt += diag / 1.4142
+
         counter = 0
 
         #Loop through data chunks (and write results)
@@ -174,16 +214,11 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
             overlap = overlap) :
 
             mx_a[:]=0
-            if mode == 'height_weighted' : mx_cnt[:]=0   
-            
+            if not precalc: mx_cnt[:]=0   
+                        
             dem.rst.ReadAsArray(*gdal_take, mx_z[mx_view_in]).astype(float)
-            
-            if denoise : mx_z = filter3(mx_z)
                 
-            # step thourgh 8 standard directions (N, NE, E, etc)
-            # for more directions : step = 0.5; 0.25; etc
-            # !! we use mirror values, to optimise !!
-            for dx, dy in [(0,1), (1,1), (1,0), (1, -1)]:
+            for dx, dy, limit in directions:
 
                 for r in range (1, radius + 1):     
                     # ! analyse only the supplied data : mx_z[mx_view_in]
@@ -194,36 +229,51 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
                     z, z2 = mx_z[view_in], mx_z[view_in2] 
                     
                     # use distance (r) or height diffrence as weight
-                    if mode != 'simple'  :
-                        if mode == 'height_weighted' :
-                            w = abs (z - z2)
-                            # cannot precalculate these weights
-                            mx_cnt[view_out] += w
-                            mx_cnt[view_out2] += w
-                            
-                        else:  w = r 
-                    # simple TPI: adjust for diagonals [speed: not a crucial loss]
-                    else : w = 1 if dx * dy == 0 else 1.4142
+                    if mode == 'height_weighted' :
+                        w = abs (z - z2) 
+                    else:
+                        w = r if mode == 'distance_weighted' else 1   
+                   # diagonal distance correction
+                    if dx * dy != 0 : w /= 1.4142 
+                   # NB - this is very expensive for heights: we can divide the entire DEM, 
+                   # but we still need to keep the original for subtraction 
+                                        
+                    if limit: # threshold between light and heavy matrix regions
+                        l = abs (limit)
+                        w1 = w * (radius / (radius + l))
+                        if r > l: # heavy region of the matrix
+                            w2 = w * (radius / (radius - l)) 
+                            # swap to change direction
+                            if limit < 0: w2, w1 = w1, w2
+                        else :   w2 = w1 # light region
+                    else:  w1, w2 = w, w 
+                                     
+                    mx_a[view_out] += z * w1
+                    mx_a[view_out2] += z2 * w2  
                     
-                    mx_a[view_out] += z * w 
-                    mx_a[view_out2] += z2 * w 
+                    if not precalc :
+                        # cannot predict these weights,
+                        # in contrast to constant weights
+                        mx_cnt[view_out] += w1
+                        mx_cnt[view_out2] += w2
                         
                 counter += 1 
-                prog = dem.chunk_x * (counter/4) / dem.xsize
+                prog = dem.chunk_x * (counter/ (4 if denoise else 2)) / dem.xsize
                 feedback.setProgress(100 * prog)
                 if feedback.isCanceled(): return{}
+      
             
             # this is a patch : the last chunk is often spilling outside raster edge 
             # so, move the edge values to match raster edge
             end = gdal_take[2]           
-            if mode != 'height_weighted' and end + gdal_take[0] == dem.xsize : 
+            if precalc and end + gdal_take[0] == dem.xsize : 
                 mx_cnt[:, end -radius : end] = mx_cnt[ : , -radius : ]
             
-            mx_z -=  mx_a / mx_cnt # weighted mean !
+            mx_z -= mx_a / mx_cnt # weighted mean !
             out = mx_z
-            
+       
             dem.add_to_buffer(out[mx_view_out], gdal_put)
-        
+           
         return {self.OUTPUT: self.output_model}
 
     def postProcessAlgorithm(self, context, feedback):
@@ -237,9 +287,9 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
         rnd = QgsSingleBandGrayRenderer(provider, 1)
         ce = QgsContrastEnhancement(provider.dataType(1))
         ce.setContrastEnhancementAlgorithm(QgsContrastEnhancement.StretchToMinimumMaximum)
-
-        ce.setMinimumValue(mean-2*sd)
-        ce.setMaximumValue(mean+2*sd)
+        
+        ce.setMinimumValue(mean - 2*sd)
+        ce.setMaximumValue(mean + 2*sd)
 
         rnd.setContrastEnhancement(ce)
 
@@ -276,12 +326,13 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
              
             <b>Input</b> should be an elevation model in raster format. 
             
-           
             <b>Radius</b> defines the search radius (in pixels).
 
             There are 3 <b>analysis types</b>: 1) standard TPI, 2) distance weighted and 3) height weighted. Weighted options use elevation point distance or height discrepancy as weighting factor.   
             
-            <b>Denoise</b> option is applying a simple 3x3 smooth filter. 
+            <b>Center of mass</b> : normally, when two altitudes are equal, their center of mass is precisely at half distance. Here, we can force this center to move (offset distance and azimuth).
+            
+            <b>Denoise</b> option is applying a double sample of pixels. 
             
             If you find this tool useful, consider to :
                  
