@@ -91,16 +91,16 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
                 self.tr('Digital elevation model')
             ) )
         
-        self.addParameter(QgsProcessingParameterNumber(
-            self.DIRECTION,
-            self.tr('Direction (0 to 360°)'),
-            1, 315, False, 0, 360))
-        
         self.addParameter(QgsProcessingParameterBoolean(
             self.BIDIRECTIONAL,
             self.tr('Bidirectional hillshade'),
             False, False)) 
         
+        self.addParameter(QgsProcessingParameterNumber(
+            self.DIRECTION,
+            self.tr('Direction (0 to 360°)'),
+            1, 315, False, 0, 360))
+                
         self.addParameter(QgsProcessingParameterNumber(
             self.ANGLE,
             self.tr('Sun angle (0 to 90°)'),
@@ -160,6 +160,9 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
         direction = self.parameterAsDouble(parameters,self.DIRECTION, context)
 
         bidirectional = self.parameterAsInt(parameters,self.BIDIRECTIONAL, context)  
+        # patch to communicate with postprocessing...
+        # because folks believe the output is wrong if the contrast is not set ....
+        self.bidir = bidirectional 
         
         if bidirectional : # because of vector addition, the effective lighting is shifted 
             direction -= 45  
@@ -191,13 +194,12 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
                        data_format_override =  byte , 
                        compression = True)
                         # data_format = None : fallback to the general setting
-
-        
+                
         sun_angle = np.radians( sun_angle)  
             
         s = np.radians(360 - direction)  # reverse the sequence (more simple than to fiddle with sin/cos...)
         
- #       for two prependicular vectors, directions can be decomposed according to sin/cos rule
+ #       for two prependicualr vectors, directions can be decomposed according to sin/cos rule
         a, b = np.cos(s) , np.sin(s)     
        
         if smooth: # larger matrix, same principle ( VERY POOR DENOISING ! )
@@ -212,7 +214,9 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
             win = np.array([[-1, -2 ,-1],
                             [0,  0 ,0],
                             [1, 2 ,1]])  
-        
+    
+    
+    
         # perpendicular win : second vector
         win2 = np.rot90(win) 
         # for some reason, numpy's rotation is anti-clockwise !!
@@ -292,10 +296,10 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
             out = np.cos(lon - sun_angle) * np.cos(lat)
             
             
-            # NB :  cos(arctan(x)) = 1 / sqrt(1+x²)  - can be used to compress the calculation 
+            # NB :  cos(arctan(x)) = 1 / sqrt(1+x²) can be used to compress the calculation 
             # while here we do first arctan, and then cos
             # but - where to plug the adjustement for the sun angle ??
-
+                       
             if bidirectional:
                 #acessory direction: swap matrices and factors !
                 #lon = lat etc.
@@ -305,6 +309,12 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
                 #add two hillshades
                 out += np.cos(lon - sun_angle) * np.cos(lat) 
                 
+                # normalise for byte conversion 
+                if byte: out /= 2            
+	    # To be studied : values can be stretched for better contrast, 
+	    # but this may produce unintutuive results in combination with varying sun height
+            # out **= gamma 
+          
             dem.add_to_buffer (out[mx_view_out], gdal_put) 
         
 
@@ -322,10 +332,9 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
         rnd = QgsSingleBandGrayRenderer(provider, 1)
         ce = QgsContrastEnhancement(provider.dataType(1))
         ce.setContrastEnhancementAlgorithm(QgsContrastEnhancement.StretchToMinimumMaximum)
-
-
-        ce.setMinimumValue(mean - 3*sd)
-        ce.setMaximumValue(mean + 3*sd)
+        
+        ce.setMinimumValue(mean - sd * 2)
+        ce.setMaximumValue(mean + sd * (1 if self.bidir else 2))
         
        # to do QgsBrightnessContrastFilter
 
@@ -368,10 +377,10 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
             
             The <b>output</b> is expressing lambertian reflectance (with possible adjustements for better contrast).
            
-            <b>Sun direction</b> and <b>sun angle</b> parmeters define horizontal and vertical position of the light source, where 0° is on the North, 90° on the East and 270° on the West.
-
             <b>Bidirectional hillshade</b>: combine with a second hillshade, from a perpendicular direction. IMPORTANT: this will work only when lateral terrain exaggeration is set above 1.0.
             
+            <b>Sun direction</b> and <b>sun angle</b> parmeters define horizontal and vertical position of the light source, where 0° is on the North, 90° on the East and 270° on the West.
+
             <b>Lateral and longitudinal exaggeration</b> introduce artifical deformations of the elevation model, in order to achieve higher shading contrast.   
                 
             <b>Denoise</b> option is using larger search radius, producing smoother results. 
