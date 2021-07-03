@@ -194,7 +194,7 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
                        data_format_override =  byte , 
                        compression = True)
                         # data_format = None : fallback to the general setting
-                
+               
         sun_angle = np.radians( sun_angle)  
             
         s = np.radians(360 - direction)  # reverse the sequence (more simple than to fiddle with sin/cos...)
@@ -203,19 +203,15 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
         a, b = np.cos(s) , np.sin(s)     
        
         if smooth: # larger matrix, same principle ( VERY POOR DENOISING ! )
-            win = np.array([[-1, 0, -2,  0, -1],
-                            [ 0, 0, 0, 0, 0],
-                             [0, 0, 0, 0, 0],
-                             [ 0, 0, 0, 0, 0],
-                             [1, 0, 2, 0, 1]]) 
-        
-        else: 
-
-            win = np.array([[-1, -2 ,-1],
+             win = np.array([[-1, -2 ,-1],
                             [0,  0 ,0],
                             [1, 2 ,1]])  
-    
-    
+        
+        else: 
+            win = np.array([[0, -1 ,0],
+                            [0,  0 ,0],
+                            [0, 1 ,0]])  
+   
     
         # perpendicular win : second vector
         win2 = np.rot90(win) 
@@ -227,8 +223,10 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
         overlap = win_size if not smooth else win_size + 1
    
                                                 # adjust for angular offset
-        pix_x = dem.pix_x * (4 if smooth else 2)
-        pix_y = dem.pix_y * (4 if smooth else 2)
+        pix_x = dem.pix_x * 2
+        pix_y = dem.pix_y * 2
+        
+        
         # for the record : diag_size = pix / np.cos(np.radians(s%45))   
 
         
@@ -294,12 +292,10 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
                 # width = cos(inclination) * true_width
                 
             out = np.cos(lon - sun_angle) * np.cos(lat)
-            
-            
-            # NB :  cos(arctan(x)) = 1 / sqrt(1+x²) can be used to compress the calculation 
+            # NB :  cos(arctan(x)) = 1 / sqrt(1+x²)  - to compress the calculation 
             # while here we do first arctan, and then cos
             # but - where to plug the adjustement for the sun angle ??
-                       
+
             if bidirectional:
                 #acessory direction: swap matrices and factors !
                 #lon = lat etc.
@@ -314,7 +310,7 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
 	    # To be studied : values can be stretched for better contrast, 
 	    # but this may produce unintutuive results in combination with varying sun height
             # out **= gamma 
-          
+                    
             dem.add_to_buffer (out[mx_view_out], gdal_put) 
         
 
