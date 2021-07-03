@@ -125,7 +125,7 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterBoolean(
             self.DENOISE,
             self.tr('Denoise'),
-            False, False)) 
+            True, False)) 
         
         self.addParameter(QgsProcessingParameterBoolean(
             self.BYTE_FORMAT,
