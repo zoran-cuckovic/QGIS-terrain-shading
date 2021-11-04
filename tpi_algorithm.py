@@ -72,7 +72,7 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
     OFFSET_AZIMUTH= 'OFFSET_AZIMUTH'
     OUTPUT = 'OUTPUT'
 
-    ANALYSIS_TYPES = ['Simple',  'Distance weighted', 'Height weighted']
+    ANALYSIS_TYPES = ['Simple',  'Distance weighted', "Inverse dist. weighted", 'Height weighted']
 
     output_model = None #for post-processing
 
@@ -110,7 +110,7 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
             self.OFFSET_AZIMUTH,
             self.tr('Center of mass: azimuth'),
             0, # QgsProcessingParameterNumber.Integer = 0
-            45, False, 0, 360))
+            135, False, 0, 360))
         
         self.addParameter(QgsProcessingParameterBoolean(
             self.DENOISE,
@@ -132,7 +132,7 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
         radius = self.parameterAsInt(parameters,self.RADIUS, context)
 
         mode = self.parameterAsInt(parameters,self.ANALYSIS_TYPE, context)
-    
+
         denoise = self.parameterAsInt(parameters,self.DENOISE, context) 
         
         offset_dist = self.parameterAsInt(parameters,self.OFFSET_DISTANCE, context)
@@ -176,8 +176,8 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
         # Therefore no need to loop over opposite directions (here N and W)
         directions = [(0,1, offset_y),  (1,0, offset_x)] # orthogonal directions 
         if denoise: directions += [(1,1, offset_y_diag), (1, -1, offset_x_diag)]
-                                                    # 'height_weighted' 
-        precalc = not offset_x and not offset_y and mode != 2
+            
+        precalc = not offset_x and not offset_y and mode != 3 #'height_weighted' 
         # pre-calculate the number of visits per cell 
         # (cannot be done for height based weights)
         # Considering mass displacement mode, the problem is to handle edges -> 
@@ -187,7 +187,7 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
             sy, sx = mx_z.shape
             c1, c2 = np.mgrid[0 : sy, 0 : sx]
             
-            if mode == 1: # 'distance_weighted':
+            if mode in [1, 2]: #'distance_weighted'
                 c1, c2 = np.cumsum(c1, axis = 0), np.cumsum(c2, axis=1)
                 max_val = sum([i for i in range(radius + 1)])
             else: 
@@ -204,7 +204,7 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
                 mx_cnt += diag / 1.4142
 
         counter = 0
-
+      
         #Loop through data chunks (and write results)
         for mx_view_in, gdal_take, mx_view_out, gdal_put in window_loop ( 
             shape = (dem.xsize, dem.ysize), 
@@ -226,10 +226,14 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
                     
                     z, z2 = mx_z[view_in], mx_z[view_in2] 
                     
-                    if mode == 2 :   w = abs (z - z2) # 'height_weighted' :
-                    elif mode == 1 : w = r #  'distance_weighted'
-                    else:            w = 1 # no weight
-                    # diagonal distance correction
+                    if mode == 3 : # height diffrence as weight
+                        w = abs (z - z2) 
+                    elif  mode == 1:    #'distance_weighted'
+                        w = r
+                    elif mode == 2: # inverse dist weighted
+                        w = radius + 1 - r
+                    else: w = 1   
+                   # diagonal distance correction
                     if dx * dy != 0 : w /= 1.4142 
                    # NB - this is very expensive for heights: we can divide the entire DEM, 
                    # but we still need to keep the original for subtraction 
@@ -244,8 +248,8 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
                         else :   w2 = w1 # light region
                     else:  w1, w2 = w, w 
                                      
-                    mx_a[view_out] += z * w1
-                    mx_a[view_out2] += z2 * w2  
+                    mx_a[view_out] += z * w1 
+                    mx_a[view_out2] += z2 * w2 
                     
                     if not precalc :
                         # cannot predict these weights,
@@ -267,9 +271,9 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
             
             mx_z -= mx_a / mx_cnt # weighted mean !
             out = mx_z
-       
+            
             dem.add_to_buffer(out[mx_view_out], gdal_put)
-           
+                
         return {self.OUTPUT: self.output_model}
 
     def postProcessAlgorithm(self, context, feedback):
