@@ -142,6 +142,22 @@ class Raster:
                   "(probably due to incorrect projection)!")
             
         return err, fatal
+    
+    """
+    Load a chunk 
+    """         
+    def take (self, gdal_take, matrix_in, fill_nodata=None, data_type = float):
+        
+        self.rst.ReadAsArray(*gdal_take, matrix_in).astype(data_type)
+        
+        if not fill_nodata is None: 
+            
+            matrix_in[matrix_in == self.nodata] = fill_nodata 
+            
+            # DANGER : handling the common problem of implicit nodata (not registered) 
+            matrix_in[matrix_in < -9990] = fill_nodata
+         
+        return matrix_in
         
     def add_to_buffer(self, matrix, gdal_put, 
                       mode = DUMP, 
