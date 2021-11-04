@@ -166,8 +166,9 @@ class TextureAlgorithm(QgsProcessingAlgorithm):
                     chunk = chunk,
                     axis = axis) :
                 
-                dem.rst.ReadAsArray(*gdal_take, mx_z[mx_view_in])
-                                               
+                #dem.rst.ReadAsArray(*gdal_take, mx_z[mx_view_in])
+                dem.take(gdal_take, mx_z[mx_view_in], fill_nodata = 0)
+                        
                 r = np.fft.rfft( mx_z, N, axis=axis) * H
                 r = np.fft.irfft(r, axis=axis)
                 
