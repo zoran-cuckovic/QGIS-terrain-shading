@@ -240,7 +240,7 @@ class TextureAlgorithm(QgsProcessingAlgorithm):
              
 	     IMPORTANT: the elevation model should not contain "NoData", i.e. empty data. These will introduce large stripes across the output raster. 
              
-	     Or check the <a href = https://landscapearchaeology.org/qgis-terrain-shading/>maunal</a>.
+	     You can also check the <a href = https://landscapearchaeology.org/qgis-terrain-shading/>manual</a>.
              
 	     If you find this tool useful, consider to :
                  
