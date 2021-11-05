@@ -23,7 +23,7 @@ changelog="Experimental implementation of TPI method with mass displacement."
 # Tags are comma separated with spaces allowed
 tags=raster, hillshade, shadows, ambient occlusion, sky-view factor
 
-homepage=homepage=https://landscapearchaeology.org/qgis-terrain-shading
+homepage=https://landscapearchaeology.org/qgis-terrain-shading
 category=Raster Analysis
 icon=icon.png
 # experimental flag
