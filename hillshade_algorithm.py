@@ -381,8 +381,8 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
                 
             <b>Denoise</b> option is using larger search radius, producing smoother results. 
 	    
-	    For more information see <a href = https://landscapearchaeology.org/qgis-terrain-shading/>the manual</a>.
-            
+	    For more information, check <a href = "https://landscapearchaeology.org/qgis-terrain-shading/" >the manual</a>.
+             
             If you find this tool useful, consider to :
                  
              <a href='https://ko-fi.com/D1D41HYSW' target='_blank'><img height='30' style='border:0px;height:36px;' src='%s/help/kofi2.webp' /></a>
