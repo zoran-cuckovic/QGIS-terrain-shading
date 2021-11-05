@@ -380,6 +380,8 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
             <b>Lateral and longitudinal exaggeration</b> introduce artifical deformations of the elevation model, in order to achieve higher shading contrast.   
                 
             <b>Denoise</b> option is using larger search radius, producing smoother results. 
+	    
+	    For more information see <a href = https://landscapearchaeology.org/qgis-terrain-shading/>the manual</a>.
             
             If you find this tool useful, consider to :
                  
