@@ -235,10 +235,14 @@ class TextureAlgorithm(QgsProcessingAlgorithm):
         curr_dir = path.dirname(path.realpath(__file__))
         h = ( """
              This algorithm is based on wavelength analysis (Fourier transform) where terrain curvature is represented as a waveform. 
-             The alpha parameter controls the impact of wave-forms over elevation: when set to zero, pure elevation will be returned, when set to one, only the "noise" will be retained. The optimal value is approx 0.5.
-             IMPORTANT: the elevation model should not contain "NoData", i.e. empty data. These will introduce large stripes across the output raster. 
-             See also at <a href = http://www.textureshading.com>www.textureshading.com</a>.
-             If you find this tool useful, consider to :
+             
+	     The alpha parameter controls the impact of wave-forms over elevation: when set to zero, pure elevation will be returned, when set to one, only the "noise" will be retained. The optimal value is approx 0.5.
+             
+	     IMPORTANT: the elevation model should not contain "NoData", i.e. empty data. These will introduce large stripes across the output raster. 
+             
+	     Or check the <a href = https://landscapearchaeology.org/qgis-terrain-shading/>maunal</a>.
+             
+	     If you find this tool useful, consider to :
                  
              <a href='https://ko-fi.com/D1D41HYSW' target='_blank'><img height='30' style='border:0px;height:36px;' src='%s/help/kofi2.webp' /></a>
             """) % curr_dir
