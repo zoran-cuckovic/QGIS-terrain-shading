@@ -332,7 +332,7 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
     
             <b>Sun direction</b> and <b>sun angle</b> parmeters define horizontal and vertical position of the sun, where 0° is on the North, 90° on the East and 270° on the West.
 
-            For more information see: <a href="https://zoran-cuckovic.from.hr/QGIS-terrain-shading/">zoran-cuckovic.from.hr/QGIS-terrain-shading/</a>.
+            For more information see <a href = https://landscapearchaeology.org/qgis-terrain-shading/>the manual</a>.
 			
             Shading style definitions can be found in <a href="https://github.com/zoran-cuckovic/QGIS-terrain-shading/tree/styles">plugin repository</a>.   
 
