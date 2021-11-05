@@ -294,7 +294,8 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
                  - Radius: The ambient occlusion is calculated within a defined radius for each raster pixel (computation time is directly dependent on the analysis radius).
                  - Denoise: Apply a simple smoothing filter.
                 NB. This algorithm is made for terrain visualisation, it is not appropriate for precise calculation of solar exposition or of incident light.
-                For more information see <a href="https://zoran-cuckovic.github.io/QGIS-terrain-shading/"> the manual </a> and the in-depth <a href=https://landscapearchaeology.org/2020/ambient-occlusion/"> blog post</a>.
+                
+		For more information see <a href = https://landscapearchaeology.org/qgis-terrain-shading/>the manual</a>.
                 
                 If you find this tool useful, consider to :
                  
