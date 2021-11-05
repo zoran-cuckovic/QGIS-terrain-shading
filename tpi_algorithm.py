@@ -333,6 +333,8 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
             <b>Center of mass</b> : normally, when two altitudes are equal, their center of mass is precisely at half distance. Here, we can force this center to move (offset distance and azimuth).
             
             <b>Denoise</b> option is applying a double sample of pixels. 
+	    
+	    You can also check the <a href = https://landscapearchaeology.org/qgis-terrain-shading/>manual</a>.
             
             If you find this tool useful, consider to :
                  
