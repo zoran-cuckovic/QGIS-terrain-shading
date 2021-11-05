@@ -110,7 +110,7 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
             self.OFFSET_AZIMUTH,
             self.tr('Center of mass: azimuth'),
             0, # QgsProcessingParameterNumber.Integer = 0
-            135, False, 0, 360))
+            315, False, 0, 360))
         
         self.addParameter(QgsProcessingParameterBoolean(
             self.DENOISE,
