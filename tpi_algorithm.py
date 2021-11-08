@@ -111,7 +111,8 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
             self.tr('Center of mass: azimuth'),
             0, # QgsProcessingParameterNumber.Integer = 0
             315, False, 0, 360))
-        
+   
+# !! Should be set to false !!
         self.addParameter(QgsProcessingParameterBoolean(
             self.DENOISE,
             self.tr('Denoise'),
