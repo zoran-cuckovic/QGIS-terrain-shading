@@ -176,7 +176,9 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
         # Therefore no need to loop over opposite directions (here N and W)
         directions = [(0,1, offset_y),  (1,0, offset_x)] # orthogonal directions 
         if denoise: directions += [(1,1, offset_y_diag), (1, -1, offset_x_diag)]
-            
+          
+	# NOTE : height weights are just squared delta values ! 
+	# but we do not calculate deltas individually here...
         precalc = not offset_x and not offset_y and mode != 3 #'height_weighted' 
         # pre-calculate the number of visits per cell 
         # (cannot be done for height based weights)
