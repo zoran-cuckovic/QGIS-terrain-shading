@@ -145,7 +145,56 @@ def filter3 (raster, mode='average'):
     if average: temp_matrix /= temp_count
     return temp_matrix
 
+def median_filter (raster, radius=2, shape = 'ortho', output_array = None):
+    """ Two neighbourhood shapes, orthogonal and star
+    (star shape gives strange results, do not use it ! )
+    output array : raster shape + 3rd dim which is 
+    1 + radius * (4 if shape == 'ortho' else 8)
+    """
+    mx_z, mx_a = raster, output_array
+    
+    if not isinstance(mx_a, np.ndarray) :
+        # huge matrix, costly ! 
+        # determine the depth in 3d dimension (to store all pixels in the neighbourhood)
+        # position 0 = central cells 
+        dim3 = 1 + radius * (4 if shape == 'ortho' else 8)
+        mx_a = np.empty(raster.shape + (dim3,) )
+    
+    mx_a[:] = np.nan # clean up   
+    # fill with central cells' values 
+    mx_a[:,:, 0] = mx_z
+    
+    directions = [(0,1),  (1,0)] # orthogonal directions 
+    if shape == 'star': directions += [(1,1), (1, -1)]
 
+    for dx, dy in directions: 
+        for r in range (1, radius + 1):     
+            
+             # ! analyse only the supplied data : mx_z[mx_view_in]
+            view_in, view_out = view(r * dy, r * dx, mx_z.shape)
+             # this is for readability only
+            view_out2, view_in2 = view_in, view_out
+            
+            # diagonal distance correction (costly...) 
+            if dx and dy : 
+                diff = (mx_z[view_out] - mx_z[view_in]) * 0.7
+                z = mx_z[view_in] + diff
+                z2 = mx_z[view_in2] - diff
+            else:    
+                z, z2 = mx_z[view_in], mx_z[view_in2]
+                        
+            pos = r  # find free slots in the 3rd dimension  (0 = central cell)       
+            if dy : 
+                pos += 2 * radius 
+                if dx : pos += 4 * radius # diagonal : dx and dy           
+  
+            mx_a[view_out][:,:, pos  ] =  z 
+            mx_a[view_out2][:,:, pos + radius ] =  z2 
+    
+    # let's try to avoid allocating new memory slots , to save some time...
+    np.nanmedian(mx_a, axis = 2, out = mx_a[:,:,0])
+    return mx_a[:,:,0]
+    
 # Code from : https://github.com/fasiha/nextprod-py
 def nextpow(a: float, x: float) -> float:
   """The smallest `a^n` not less than `x`, where `n` is a non-negative integer.
