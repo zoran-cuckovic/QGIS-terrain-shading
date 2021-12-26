@@ -137,9 +137,9 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
          # 2)   --------------- ORIENTATION AND DIMENSIONS -----------------
          
         # Fixing WGS bias : rectangular pixels 
-        if dem.pix_x != dem.pix_y and direction % 90:
+        if dem.pix_x != dem.pix_y:
             direction = dem.angle_adjustment(direction)
-            
+             
         steep =  (45 <= direction <= 135 or 225 <= direction <= 315)
         # this is an arbitrary label for steep !
         
@@ -333,7 +333,7 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
             <b>Sun direction</b> and <b>sun angle</b> parmeters define horizontal and vertical position of the sun, where 0° is on the North, 90° on the East and 270° on the West.
 
             For more information, check <a href = "https://landscapearchaeology.org/qgis-terrain-shading/" >the manual</a>.
-             	
+	    
             Shading style definitions can be found in <a href="https://github.com/zoran-cuckovic/QGIS-terrain-shading/tree/styles">plugin repository</a>.   
 
 	    If you find this plugin useful, consider to : 
