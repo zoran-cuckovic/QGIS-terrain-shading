@@ -52,7 +52,7 @@ except ImportError:
 import numpy as np
 
 from .modules import Raster as rs
-from .modules.helpers import view, window_loop, filter3
+from .modules.helpers import view, window_loop,  median_filter
 
 from qgis.core import QgsMessageLog # for testing
 
@@ -69,12 +69,13 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
     DIRECTION= 'DIRECTION'
     BIDIRECTIONAL= 'BIDIRECTIONAL'
     ANGLE = 'ANGLE'
-    LON_EX ='LONG_EX'
-    LAT_EX = 'LAT_EX'
+    LON_Z ='LON_Z'
+    LAT_Z = 'LAT_Z'
     DENOISE = 'DENOISE'
     BYTE_FORMAT = 'BYTE_FORMAT'
     OUTPUT = 'OUTPUT'
-
+    
+    DENOISE_TYPES= ['None', 'Mean', 'Mean and median']
 
     output_model = None #for post processing
     val_range = None
@@ -107,13 +108,13 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
             1, 45, False, 0, 90))
         
         self.addParameter(QgsProcessingParameterNumber(
-            self.LAT_EX,
-            self.tr('Lateral exaggeration'),
+            self.LAT_Z,
+            self.tr('Lateral Z factor'),
             1, 2, False, 0, 100))
         
         self.addParameter(QgsProcessingParameterNumber(
-            self.LON_EX,
-            self.tr('Longitudinal exaggeration'),
+            self.LON_Z,
+            self.tr('Longitudinal Z factor'),
             1, 1, False, 0, 100))
         """
         These parameters give poor results : to be studied
@@ -122,10 +123,11 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
             self.tr('Contrast (gamma)'),
             1, 1, False, 0, 10))
         """
-        self.addParameter(QgsProcessingParameterBoolean(
+        self.addParameter(QgsProcessingParameterEnum(
             self.DENOISE,
             self.tr('Denoise'),
-            True, False)) 
+            self.DENOISE_TYPES,
+            defaultValue=1)) 
         
         self.addParameter(QgsProcessingParameterBoolean(
             self.BYTE_FORMAT,
@@ -141,19 +143,6 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
        
         
         elevation_model= self.parameterAsRasterLayer(parameters,self.INPUT, context)
-
-        if elevation_model.crs().mapUnits() != 0 :
-            err= " \n ****** \n ERROR! \n Raster data has to be projected in a metric system!"
-            feedback.reportError(err, fatalError = False)
-            # raise QgsProcessingException(err)
-
-        if  round(abs(elevation_model.rasterUnitsPerPixelX()),
-                    2) !=  round(abs(elevation_model.rasterUnitsPerPixelY()),2):
-            
-            err= (" \n ****** \n ERROR! \n Raster pixels are irregular in shape " +
-                  "(probably due to incorrect projection)!")
-            feedback.reportError(err, fatalError = False)
-            # raise QgsProcessingException(err)
 
         self.output_model = self.parameterAsOutputLayer(parameters,self.OUTPUT,context)
 
@@ -175,8 +164,8 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
         smooth = self.parameterAsInt(parameters,self.DENOISE, context)     
         byte =  self.parameterAsInt(parameters,self.BYTE_FORMAT, context) 
         
-        lat_factor = self.parameterAsDouble(parameters,self.LAT_EX, context)
-        lon_factor = self.parameterAsDouble(parameters,self.LON_EX, context)
+        lat_factor = self.parameterAsDouble(parameters,self.LAT_Z, context)
+        lon_factor = self.parameterAsDouble(parameters,self.LON_Z, context)
         
         if bidirectional and lat_factor <= lon_factor: 
             err= (" \n ****** \n ERROR! \n Bidirectional hillshade has to be used " +
@@ -202,17 +191,17 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
  #       for two prependicualr vectors, directions can be decomposed according to sin/cos rule
         a, b = np.cos(s) , np.sin(s)     
        
-        if smooth: # larger matrix, same principle ( VERY POOR DENOISING ! )
-             win = np.array([[-1, -2 ,-1],
+        if smooth :
+            # larger matrix, same principle ( standards for hillshades )
+            win = np.array([[-1, -2 ,-1],
                             [0,  0 ,0],
-                            [1, 2 ,1]])  
-        
-        else: 
+                            [1, 2 ,1]]) 
+    
+        else: # can be interesting for feature detection, not standard for hillshades
             win = np.array([[0, -1 ,0],
                             [0,  0 ,0],
                             [0, 1 ,0]])  
-   
-    
+ 
         # perpendicular win : second vector
         win2 = np.rot90(win) 
         # for some reason, numpy's rotation is anti-clockwise !!
@@ -248,6 +237,8 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
             
             # for speed : read into an allocated array
             dem.rst.ReadAsArray(*gdal_take, mx_z[mx_view_in])
+            
+            if smooth == 2 : mx_z = median_filter(mx_z, 2)
             
             mx_a [:], mx_a2[:] = 0,0
                        
@@ -377,7 +368,7 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
             
             <b>Sun direction</b> and <b>sun angle</b> parmeters define horizontal and vertical position of the light source, where 0° is on the North, 90° on the East and 270° on the West.
 
-            <b>Lateral and longitudinal exaggeration</b> introduce artifical deformations of the elevation model, in order to achieve higher shading contrast.   
+            <b>Lateral and longitudinal Z factor </b> introduce artifical exaggeration of the elevation model, in order to achieve higher shading contrast.   
                 
             <b>Denoise</b> option is using larger search radius, producing smoother results. 
 	    
