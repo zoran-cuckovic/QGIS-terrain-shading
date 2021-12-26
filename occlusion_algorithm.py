@@ -148,12 +148,7 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
         if err: feedback.reportError(err, fatalError = fatal)
 
         dem.set_output(self.output_model)
-                       
-#        methods = ['sky_view', 'symmetric', 'openness']
-#        dem.occlusion(radius, method = methods[method], denoise = denoise,
-#                  feedback_handle=feedback)
-#        
-          
+                               
         overlap = radius if not denoise else radius +1
              
         chunk_slice = (dem.ysize, dem.chunk_x + 2 * overlap)
@@ -164,7 +159,6 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
         if symmetric: mx_b = mx_a
         else: mx_b = np.zeros(mx_z.shape)
         
-    # novo 
         mx_a = np.zeros(mx_z.shape + ((radius ,) ))
         mx_b = np.zeros(mx_z.shape + ((radius ,) ))
         
@@ -206,8 +200,7 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
                 
                 for r in range (1, radius + 1): 
                     # we could probably sample over radius, not all pixels are needed...
-                    
-                                  
+                                                 
                     view_in, view_out = view(r * dx, r * dy, mx_z[mx_view_in].shape)
 
                     angles = mx_z[view_in] - mx_z[view_out]
