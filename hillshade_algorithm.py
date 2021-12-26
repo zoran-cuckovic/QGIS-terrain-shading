@@ -370,7 +370,7 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
 
             <b>Lateral and longitudinal Z factor </b> introduce artifical exaggeration of the elevation model, in order to achieve higher shading contrast.   
                 
-            <b>Denoise</b> option is using larger search radius, producing smoother results. 
+            <b>Denoise</b>: apply a filter to produce smoother results. 
 	    
 	    For more information, check <a href = "https://landscapearchaeology.org/qgis-terrain-shading/" >the manual</a>.
              
