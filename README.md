@@ -25,7 +25,7 @@ Plugin code can then be extracted in a new folder inside the plugins folder (you
 Finally, there is a version made as QGIS script, which can be downloaded from the [script branch](https://github.com/zoran-cuckovic/QGIS-terrain-shading/tree/script) and installed as a QGIS script. 
 
 ## Manual
-See at [zoran-cuckovic.github.io/QGIS-terrain-shading](https://zoran-cuckovic.github.io/QGIS-terrain-shading).
+See at [LandscapeArchaeology.org/qgis-terrain-shading](https://landscapearchaeology.org/qgis-terrain-shading).
 
 ## Tests
 To test the algorithm output, you can find a series of models in the Test branch of this repository ([test-data](https://github.com/zoran-cuckovic/QGIS-terrain-shading/tree/test-data)).
