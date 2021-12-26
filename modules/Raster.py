@@ -68,8 +68,6 @@ class Raster:
             raise Exception("*** Elevation model cannot be opened ! ***")
         
         self.rst = gdal_raster #for speed, keep open raster ?
-
-        
                         
         # ! attention: x in gdal is y dimension un numpy (the first dimension)
         xs , ys = gdal_raster.RasterXSize , gdal_raster.RasterYSize
@@ -85,7 +83,8 @@ class Raster:
         #adfGeoTransform[5] /* n-s pixel resolution */
 
         self.pix_x, self.pix_y = abs(gt[1]), abs(gt[5]) 
-        self.pix_diag = np.sqrt( self.pix_x**2 + self.pix_y**2)
+        # this is meaningless for WGS 84 !
+        # self.pix_diag = np.sqrt( self.pix_x**2 + self.pix_y**2)
                 
         raster_x_min = gt[0]
         raster_y_max = gt[3] # it's top left y, so maximum!
