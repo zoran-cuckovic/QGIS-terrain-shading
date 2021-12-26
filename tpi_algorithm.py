@@ -51,7 +51,7 @@ except ImportError:
 import numpy as np
 
 from .modules import Raster as rs
-from .modules.helpers import view, window_loop, filter3
+from .modules.helpers import view, window_loop, median_filter
 
 from qgis.core import QgsMessageLog # for testing
 
@@ -73,7 +73,8 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
     OUTPUT = 'OUTPUT'
 
     ANALYSIS_TYPES = ['Simple',  'Distance weighted', "Inverse dist. weighted", 'Height weighted']
-
+    DENOISE_TYPES= ['None', 'Mean', 'Median', 'Mean and median']
+    
     output_model = None #for post-processing
 
     def initAlgorithm(self, config):
@@ -111,12 +112,12 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
             self.tr('Center of mass: azimuth'),
             0, # QgsProcessingParameterNumber.Integer = 0
             315, False, 0, 360))
-   
-# !! Should be set to false !!
-        self.addParameter(QgsProcessingParameterBoolean(
+        
+        self.addParameter(QgsProcessingParameterEnum(
             self.DENOISE,
             self.tr('Denoise'),
-            True, False)) 
+            self.DENOISE_TYPES,
+            defaultValue=0)) 
         
         self.addParameter(
             QgsProcessingParameterRasterDestination(
@@ -137,7 +138,7 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
         denoise = self.parameterAsInt(parameters,self.DENOISE, context) 
         
         offset_dist = self.parameterAsInt(parameters,self.OFFSET_DISTANCE, context)
-        if offset_dist >= radius :
+        if offset_dist > radius :
             err= (" \n ****** \n ERROR! \n Center of mass is beyond the analysis range: " +
                   "offset distance should be less than radius!")
             feedback.reportError(err, fatalError = False)
@@ -148,10 +149,17 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
         # is organised in corresopndance to numpy matrix ordering (y first and descending). 
         offset_azimuth = 360 - self.parameterAsInt(parameters,self.OFFSET_AZIMUTH, context)
         # decompose angle and distance to pixel coords
-        offset_x = int(offset_dist * np.sin(np.radians(offset_azimuth)))
-        offset_y = int(offset_dist * np.cos(np.radians(offset_azimuth)))
-        offset_x_diag = int(offset_dist * np.sin(np.radians(offset_azimuth - 45)))
-        offset_y_diag = int(offset_dist * np.cos(np.radians(offset_azimuth - 45)))
+        offset_x = round(offset_dist * np.sin(np.radians(offset_azimuth)))
+        offset_y = round(offset_dist * np.cos(np.radians(offset_azimuth)))
+        offset_x_diag = round(offset_dist * np.sin(np.radians(offset_azimuth - 45)))
+        offset_y_diag = round(offset_dist * np.cos(np.radians(offset_azimuth - 45)))
+        
+        # TODO
+        # A better solution is to divide the matrix into heavy and light parts, 
+        # and express the weight as the percentage of the heavy part (e.g. 75 %)
+        # The weight is then 2w * percentage ; 2w * (1-percentage) 
+        # (2w, because heavy + light = 2w)
+        # ...need to select light/heavy branches !
                
         dem = rs.Raster(elevation_model)
         
@@ -176,15 +184,25 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
         # but in opposite directions (N-S, E-W etc.)
         # Therefore no need to loop over opposite directions (here N and W)
         directions = [(0,1, offset_y),  (1,0, offset_x)] # orthogonal directions 
-        if denoise: directions += [(1,1, offset_y_diag), (1, -1, offset_x_diag)]
-          
-	# NOTE : height weights are just squared delta values ! 
-	# but we do not calculate deltas individually here...
-        precalc = not offset_x and not offset_y and mode != 3 #'height_weighted' 
+        if denoise in [1,3]: directions += [(1,1, offset_y_diag), (1, -1, offset_x_diag)]
+            
+        precalc = not offset_x and not offset_y and mode in [0,1] # TODO for inverse height ( mode = 2) !
+
+        
+        # handling irregular pixels (lat long)
+        # attention wy , wx are swapped - give the x weight to y dimension..
+        w_y, w_x = dem.pix_x/dem.pix_y, dem.pix_y/dem.pix_x
+        # ensure wx + wy = 2
+        if w_x < 1 : w_y = 2 - w_x
+        elif w_y < 1 : w_x = 2 - w_y
+      
+        # Diagonal for rectangular pixels 
+        w_diag = np.sqrt (w_x**2 + w_y**2)
+
         # pre-calculate the number of visits per cell 
         # (cannot be done for height based weights)
         # Considering mass displacement mode, the problem is to handle edges -> 
-        # they have shorter radiuses and are not always affested by displacement ...
+        # they have shorter radiuses and are not always affected by displacement ...
         if precalc:
 
             sy, sx = mx_z.shape
@@ -200,12 +218,15 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
             
             # reverse and find distances to back edges
             np.minimum(c1, c1[::-1,:], c1); np.minimum(c2, c2[:, ::-1], c2)
-           
-            mx_cnt[:] = c1 + c2 + max_val * 2 # orthogonal mode
-            if denoise: # diagonal mode
+            
+            # orthogonal mode
+            mx_cnt[:] = c1 + c2 + max_val * 2
+            
+            if denoise in [1, 3]: # diagonal mode
                 diag =  c1 + c2 + np.minimum (c1, c2) + max_val 
-                mx_cnt += diag / 1.4142
 
+                mx_cnt += diag / w_diag
+                
         counter = 0
       
         #Loop through data chunks (and write results)
@@ -213,11 +234,14 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
             shape = (dem.xsize, dem.ysize), 
             chunk = dem.chunk_x,
             overlap = overlap) :
-
-            mx_a[:]=0
-            if not precalc: mx_cnt[:]=0   
-                        
+            
             dem.rst.ReadAsArray(*gdal_take, mx_z[mx_view_in]).astype(float)
+
+            mx_a[:]= 0
+            if not precalc: mx_cnt[:]=0   
+            
+            # median filter
+            if denoise == 2 : mx_z = median_filter(mx_z, radius = 3) 
                 
             for dx, dy, limit in directions:
 
@@ -236,8 +260,14 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
                     elif mode == 2: # inverse dist weighted
                         w = radius + 1 - r
                     else: w = 1   
+                    
+                    
                    # diagonal distance correction
-                    if dx * dy != 0 : w /= 1.4142 
+                    if dx * dy != 0 : w /= w_diag
+                    elif dx : w *= w_x # pixel size correction
+                    else : w *= w_y 
+          
+                    
                    # NB - this is very expensive for heights: we can divide the entire DEM, 
                    # but we still need to keep the original for subtraction 
                                         
@@ -261,7 +291,7 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
                         mx_cnt[view_out2] += w2
                         
                 counter += 1 
-                prog = dem.chunk_x * (counter/ (4 if denoise else 2)) / dem.xsize
+                prog = dem.chunk_x * (counter/ (4 if denoise in [ 1, 3] else 2)) / dem.xsize
                 feedback.setProgress(100 * prog)
                 if feedback.isCanceled(): return{}
       
@@ -276,7 +306,7 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
             out = mx_z
             
             dem.add_to_buffer(out[mx_view_out], gdal_put)
-                
+	
         return {self.OUTPUT: self.output_model}
 
     def postProcessAlgorithm(self, context, feedback):
@@ -335,10 +365,10 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
             
             <b>Center of mass</b> : normally, when two altitudes are equal, their center of mass is precisely at half distance. Here, we can force this center to move (offset distance and azimuth).
             
-            <b>Denoise</b> option is applying a double sample of pixels. 
-	    
-	    For more information, check <a href = "https://landscapearchaeology.org/qgis-terrain-shading/" >the manual</a>.
-             
+            <b>Denoise</b> apply a smoothing filter. 
+            
+             For more information, check <a href = "https://landscapearchaeology.org/qgis-terrain-shading/" >the manual</a>.
+            
             If you find this tool useful, consider to :
                  
              <a href='https://ko-fi.com/D1D41HYSW' target='_blank'><img height='30' style='border:0px;height:36px;' src='%s/help/kofi2.webp' /></a>
