@@ -98,19 +98,19 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterNumber(
             self.RADIUS,
             self.tr('Radius in pixels'),
-            0, # QgsProcessingParameterNumber.Integer = 0
+            QgsProcessingParameterNumber.Type.Integer, 
             5, False, 0, 100))
         
         self.addParameter(QgsProcessingParameterNumber(
             self.OFFSET_DISTANCE,
             self.tr('Center of mass: offset in pixels (< radius)'),
-            0, # QgsProcessingParameterNumber.Integer = 0
+            QgsProcessingParameterNumber.Type.Integer,
             0, False, 0, 1000))
         
         self.addParameter(QgsProcessingParameterNumber(
             self.OFFSET_AZIMUTH,
             self.tr('Center of mass: azimuth'),
-            0, # QgsProcessingParameterNumber.Integer = 0
+            QgsProcessingParameterNumber.Type.Integer,
             315, False, 0, 360))
         
         self.addParameter(QgsProcessingParameterEnum(
