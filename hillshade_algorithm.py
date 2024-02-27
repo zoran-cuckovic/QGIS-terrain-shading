@@ -100,22 +100,26 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterNumber(
             self.DIRECTION,
             self.tr('Direction (0 to 360°)'),
-            1, 315, False, 0, 360))
+            QgsProcessingParameterNumber.Type.Double,
+            315, False, 0, 360))
                 
         self.addParameter(QgsProcessingParameterNumber(
             self.ANGLE,
             self.tr('Sun angle (0 to 90°)'),
-            1, 45, False, 0, 90))
+            QgsProcessingParameterNumber.Type.Double,
+            45, False, 0, 90))
         
         self.addParameter(QgsProcessingParameterNumber(
             self.LAT_Z,
             self.tr('Lateral Z factor'),
-            1, 2, False, 0, 100))
+            QgsProcessingParameterNumber.Type.Double,
+            2, False, 0, 100))
         
         self.addParameter(QgsProcessingParameterNumber(
             self.LON_Z,
             self.tr('Longitudinal Z factor'),
-            1, 1, False, 0, 100))
+            QgsProcessingParameterNumber.Type.Double,
+            1, False, 0, 100))
         """
         These parameters give poor results : to be studied
         self.addParameter(QgsProcessingParameterNumber(
