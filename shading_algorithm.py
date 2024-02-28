@@ -195,7 +195,7 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
         
         off_a = indices_x + indices_y * slope 
         off_b = indices_y + indices_x * slope 
-        print (off_a)
+        
         if steep:
             axis = 0
             # construct a slope to simulate sun angle  
