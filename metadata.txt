@@ -4,7 +4,7 @@
 name=Terrain Shading
 qgisMinimumVersion=3.0
 description=Shading algorithms for terrain analysis and visualisation.
-version=0.9.4
+version=0.9.5
 author=Zoran Čučković
 email=cuckovic.zoran@gmail.com
 
@@ -17,7 +17,7 @@ repository=https://github.com/zoran-cuckovic/QGIS-terrain-shading
 # Recommended items:
 
 # Uncomment the following line and add your changelog:
-changelog="Experimental implementation of TPI method with mass displacement."
+changelog="Bugfixes : number types, shading at 90 and 270 angle."
 
 
 # Tags are comma separated with spaces allowed
@@ -27,7 +27,7 @@ homepage=https://landscapearchaeology.org/qgis-terrain-shading
 category=Raster Analysis
 icon=icon.png
 # experimental flag
-experimental=True
+experimental=False
 
 # deprecated flag (applies to the whole plugin, not just a single version)
 deprecated=False
