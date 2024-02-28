@@ -165,19 +165,19 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
         # BUT - irregular pixels also mean that we have to readjust the lighting angle !
         # For instance, 45° is no longler a simple diagonal  - TODO !! 
             
-    
+        
         chunk = min((dem.chunk_y if steep else dem.chunk_x), (xsize if steep else ysize))
 
-        if s%45 > 0 :
-            # Determine the optimal chunk size (estimate!).
-            # The problem is to carry rasterized lines 
-            # from one chunk to another. 
-            # So, set chunk size according to minimum rasterisation error
-            c = (np.arange(1, chunk) * slope) % 1 # %1 to get decimals only
-            c[c>0.5] -= 1
-            # this is not ideal : we cannot predict where it would stop
-            chunk -= np.argmin(np.round(abs(c), decimals = 2)[::-1])+1
-   
+     
+        # Determine the optimal chunk size (estimate!).
+        # The problem is to carry rasterized lines 
+        # from one chunk to another. 
+        # So, set chunk size according to minimum rasterisation error
+        c = (np.arange(1, chunk) * slope) % 1 # %1 to get decimals only
+        c[c>0.5] -= 1
+        # this is not ideal : we cannot predict where it would stop
+        chunk -= np.argmin(np.round(abs(c), decimals = 2)[::-1])+1
+      
         # writing output beforehand, to prepare for data dumps
 
         # 3) -------   SHEAR MATRIX (INDICES) -------------
@@ -195,7 +195,7 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
         
         off_a = indices_x + indices_y * slope 
         off_b = indices_y + indices_x * slope 
-        
+        print (off_a)
         if steep:
             axis = 0
             # construct a slope to simulate sun angle  
@@ -285,8 +285,10 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
 
     def postProcessAlgorithm(self, context, feedback):
         
-        output = QgsProcessingUtils.mapLayerFromString(self.output_model, context)
         
+        output = QgsProcessingUtils.mapLayerFromString(self.output_model, context)
+     
+		
         provider = output.dataProvider()
                                                                                
         stats = provider.bandStatistics(1,QgsRasterBandStats.All,output.extent(),0)
@@ -298,8 +300,7 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
         else:  style = "/styles/shading_0-250.qml" 
 
         style = path.dirname(__file__) + style
-        
-        print (style)
+
 
         output.loadNamedStyle(style)
         output.triggerRepaint()
