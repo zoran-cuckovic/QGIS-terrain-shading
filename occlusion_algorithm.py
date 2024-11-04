@@ -81,13 +81,7 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
             self.tr('Analysis type'),
             self.ANALYSIS_TYPES,
             defaultValue=0))
-        
-        self.addParameter(QgsProcessingParameterEnum (
-            self.ANALYSIS_TYPE,
-            self.tr('Analysis type'),
-            self.ANALYSIS_TYPES,
-            defaultValue=0))
-        
+
         self.addParameter(QgsProcessingParameterBoolean(
             self.SYMMETRIC,
             self.tr('Symmetric angles'),
