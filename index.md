@@ -4,11 +4,7 @@
 
 # Terrain shading: a QGIS plugin for modelling natural illumination over digital terrain models.
 
-**Current stable version: 0.9** (February 2021)
-
-**Current experimental version: 0.9.1** (March 2021)
-
-**Supported QGIS version: 3.x**
+**NB. This page is no longer maintained, please go to (https://landscapearchaeology.org/qgis-terrain-shading/)[https://landscapearchaeology.org/qgis-terrain-shading/] for the up-to-date documentation.**
 
 **Repository and download: [github.com/zoran-cuckovic/QGIS-terrain-shading](https://github.com/zoran-cuckovic/QGIS-terrain-shading)**
 
