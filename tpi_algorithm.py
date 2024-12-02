@@ -109,7 +109,7 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
             self.OFFSET_DISTANCE,
             self.tr('Center of mass: offset in pixels (< radius)'),
             QgsProcessingParameterNumber.Integer,
-            defaultValue=5))
+            defaultValue=0))
         
         self.addParameter(QgsProcessingParameterNumber(
             self.OFFSET_AZIMUTH,
