@@ -327,8 +327,9 @@ class HillshadeAlgorithm(QgsProcessingAlgorithm):
         ce.setMinimumValue(mean - sd * 2)
         ce.setMaximumValue(mean + sd * (1 if self.bidir else 2))
         
-       # to do QgsBrightnessContrastFilter
-
+        # TODO !!
+        #☻ cb = QgsBrightnessContrastFilter
+       
         
         rnd.setContrastEnhancement(ce)
 
