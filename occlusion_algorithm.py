@@ -100,8 +100,8 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterNumber(
             self.RADIUS,
             self.tr('Radius (pixels)'),
-            QgsProcessingParameterNumber.Type.Integer, 
-            7, False, 0, 100))
+            QgsProcessingParameterNumber.Integer, 
+            defaultValue=5))
         
         self.addParameter(QgsProcessingParameterEnum(
             self.DENOISE,
