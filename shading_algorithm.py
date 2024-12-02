@@ -90,14 +90,14 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterNumber(
             self.DIRECTION,
             self.tr('Sun direction (0 to 360°)'),
-            QgsProcessingParameterNumber.Type.Double,
-            315, False, 0, 360))
+            QgsProcessingParameterNumber.Double,
+            defaultValue = 315, minValue= 0, maxValue= 360))
             
         self.addParameter(QgsProcessingParameterNumber(
             self.ANGLE,
             self.tr('Sun angle'),
-            QgsProcessingParameterNumber.Type.Double,
-            10, False, 0, 89))
+            QgsProcessingParameterNumber.Double,
+            defaultValue = 10, minValue= 0, maxValue= 89))
 
         self.addParameter(QgsProcessingParameterBoolean(
             self.SMOOTH,
