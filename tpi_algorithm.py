@@ -115,7 +115,7 @@ class TpiAlgorithm(QgsProcessingAlgorithm):
             self.OFFSET_AZIMUTH,
             self.tr('Center of mass: azimuth'),
             QgsProcessingParameterNumber.Integer,
-            efaultValue=315, minValue=0, maxValue=360))
+            defaultValue=315, minValue=0, maxValue=360))
         
         self.addParameter(QgsProcessingParameterEnum(
             self.DENOISE,
