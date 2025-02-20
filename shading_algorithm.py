@@ -290,8 +290,9 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
             
             if smooth:   
                 out = filter3(out[mx_view_out])
-                
-            #out[mask]=np.nan ==>OK with nans
+            
+	    #remove noData shadows    
+            out[mx_z == dem.nodata]=np.nan 
     
            
             dem.add_to_buffer(out[mx_view_out], gdal_put,
