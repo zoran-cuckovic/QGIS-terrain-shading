@@ -147,7 +147,8 @@ class ToposhadeAlgorithm(QgsProcessingAlgorithm):
        # mode = self.parameterAsInt(parameters,self.ANALYSIS_TYPE, context)
 
         denoise = self.parameterAsInt(parameters,self.DENOISE, context) 
-              
+        
+        
         # if strength == 0 : offset_dist = radius//2
         # elif strength == 1 : offset_dist = radius//1.5
         # else: offset_dist = radius-1
@@ -185,8 +186,8 @@ class ToposhadeAlgorithm(QgsProcessingAlgorithm):
         ce = QgsContrastEnhancement(provider.dataType(1))
         ce.setContrastEnhancementAlgorithm(QgsContrastEnhancement.StretchToMinimumMaximum)
         
-        ce.setMinimumValue(mean - 2*sd)
-        ce.setMaximumValue(mean + 2*sd)
+        ce.setMinimumValue(mean - 3*sd)
+        ce.setMaximumValue(mean + 1.5* sd)
 
         rnd.setContrastEnhancement(ce)
 
