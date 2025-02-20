@@ -41,6 +41,7 @@ from .occlusion_algorithm import OcclusionAlgorithm
 from .tpi_algorithm import TpiAlgorithm
 from .hillshade_algorithm import HillshadeAlgorithm
 from .texture_algorithm import TextureAlgorithm
+from .toposhade_algorithm import ToposhadeAlgorithm
 
 
 class DemShadingProvider(QgsProcessingProvider):
@@ -61,12 +62,18 @@ class DemShadingProvider(QgsProcessingProvider):
         ProcessingConfig.addSetting(
             Setting(self.name(), 'DATA_CHUNK',
                                     'Data chunk size (megapixels)', 5))
+       # useless ?
         ProcessingConfig.addSetting(
             Setting(self.name(), 'CONVERT_INT',
                     'Convert results to integer values (saves space)', False))
         ProcessingConfig.addSetting(
             Setting(self.name(), 'BUFFER_SIZE',
                                     'Total buffer size (megapixels)', 500))
+        
+        # not very useful... for further testing
+        # ProcessingConfig.addSetting(
+        #     Setting(self.name(), 'EXCLUDE_PIX',
+        #                             'Pixels to exclude around the centerpoint', 1))
 									
         ProcessingConfig.readSettings()
         self.refreshAlgorithms()
@@ -88,7 +95,7 @@ class DemShadingProvider(QgsProcessingProvider):
                 # Load algorithms
         alglist =[DemShadingAlgorithm(),  HillshadeAlgorithm(),
                   OcclusionAlgorithm(),  TpiAlgorithm(),
-	               TextureAlgorithm()]
+	               TextureAlgorithm(), ToposhadeAlgorithm()]
         
         if self.isActive():
             for alg in alglist: self.addAlgorithm( alg )
