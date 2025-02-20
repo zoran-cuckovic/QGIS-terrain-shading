@@ -266,21 +266,20 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
       
             dem.rst.ReadAsArray(*gdal_coords, mx_z[mx_view_in])
                 
-            # should handle better NoData !! ==> FMAX
+            # should handle better NoData !! ==> test FMAX
             # nans will destroy the accumulation sequence
-            #mask = mx_z == dem.nodata
-            #mx_z[mask]= -9999        
+            mask = mx_z == dem.nodata
+            mx_z[mask]= -9999        
        
             mx_temp[src] = mx_z + off
                         
             mx_temp[f] += -last_line # shadows have negative values, so *-1   
         
     	    # accumulate maximum shadow depths
-            #mx_temp -= np.maximum.accumulate(mx_temp, axis= axis)
+            mx_temp -= np.maximum.accumulate(mx_temp, axis= axis)
             #FMAX : doesn't care about nans :)
-            mx_temp -= np.fmax.accumulate(mx_temp, axis= axis)
-            
-            
+            #mx_temp -= np.fmax.accumulate(mx_temp, axis= axis)
+             
                      # first line has the shadow of zero depth (nothing to accum), so copy from previous chunk
             mx_temp[f] = last_line 
             
@@ -289,11 +288,10 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
             out = mx_temp[src] 
             
             if smooth:   
-                out = filter3(out[mx_view_out])
+                out = filter3(out)
             
-	    #remove noData shadows    
-            out[mx_z == dem.nodata]=np.nan 
-    
+            #remove noData shadows    
+            out[mask]=np.nan   
            
             dem.add_to_buffer(out[mx_view_out], gdal_put,
                               automatic_save = False ) # auto save - doesn't work with reverse reading
