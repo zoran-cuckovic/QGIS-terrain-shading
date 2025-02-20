@@ -147,9 +147,7 @@ class ToposhadeAlgorithm(QgsProcessingAlgorithm):
        # mode = self.parameterAsInt(parameters,self.ANALYSIS_TYPE, context)
 
         denoise = self.parameterAsInt(parameters,self.DENOISE, context) 
-        
-        strength = self.parameterAsInt(parameters,self.STRENGTH, context)
-        
+              
         # if strength == 0 : offset_dist = radius//2
         # elif strength == 1 : offset_dist = radius//1.5
         # else: offset_dist = radius-1
