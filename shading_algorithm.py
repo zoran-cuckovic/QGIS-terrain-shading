@@ -116,8 +116,8 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
         """
 
         feedback = QgsProcessingMultiStepFeedback(4, feedback)
-
-        # 1) -------------- INPUT -----------------
+        
+# 1) -------------- INPUT -----------------
         elevation_model= self.parameterAsRasterLayer(parameters,self.INPUT, context)
 
 
@@ -139,15 +139,18 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
                         # data_format = None : fallback to the general setting
                         
         
+         # 2)   --------------- ORIENTATION AND DIMENSIONS -----------------
         feedback.setCurrentStep(1)
         if feedback.isCanceled():
             return {}
-
-         # 2)   --------------- ORIENTATION AND DIMENSIONS -----------------
-         
+        
         # Fixing WGS bias : rectangular pixels 
         if dem.pix_x != dem.pix_y:
             direction = dem.angle_adjustment(direction)
+            # this method enanbles us to handle irregular pixels (eg. WGS lat/lon)
+            # we have to readjust the lighting angle: 
+            # for instance, 45° is no longler a simple diagonal 
+                
              
         steep =  (45 <= direction <= 135 or 225 <= direction <= 315)
         # this is an arbitrary label for steep !
@@ -159,7 +162,8 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
         slope = np.tan(np.radians(s ))# matrix shear slope
         
         tilt= np.tan(np.radians(sun_angle)) 
-         
+        
+             
             
         # ! attention: x in gdal is y dimension un numpy (the first dimension)
         xsize, ysize = dem.xsize, dem.ysize
@@ -168,14 +172,14 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
             pixel_size = dem.pix_x * np.cos(np.radians(s)) + dem.pix_y * np.sin(np.radians(s))  
         else:
              pixel_size = dem.pix_x * np.sin(np.radians(s)) + dem.pix_y * np.cos(np.radians(s))   
+        
         # ATTENTION : this method enanbles us to handle irregular pixels (eg. WGS lat/lon)
+
         # BUT - irregular pixels also mean that we have to readjust the lighting angle !
         # For instance, 45° is no longler a simple diagonal  - TODO !! 
-            
         
         chunk = min((dem.chunk_y if steep else dem.chunk_x), (xsize if steep else ysize))
 
-     
         # Determine the optimal chunk size (estimate!).
         # The problem is to carry rasterized lines 
         # from one chunk to another. 
@@ -183,13 +187,14 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
         c = (np.arange(1, chunk) * slope) % 1 # %1 to get decimals only
         c[c>0.5] -= 1
         # this is not ideal : we cannot predict where it would stop
-        chunk -= np.argmin(np.round(abs(c), decimals = 2)[::-1])+1
-      
-        # writing output beforehand, to prepare for data dumps
-
+        chunk -= np.argmin(np.round(abs(c), decimals = 2)[::-1])
+        
         feedback.setCurrentStep(2)
         if feedback.isCanceled():
             return {}
+        
+     
+        # writing output beforehand, to prepare for data dumps
 
         # 3) -------   SHEAR MATRIX (INDICES) -------------
         
@@ -241,14 +246,14 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
             f = np.s_[0  , t_x - ysize : ]            
         else:
             l = np.s_[t_y - xsize :  , -1 ]
-            f = np.s_[:xsize, 0   ]
+            f = np.s_[ : xsize, 0 ]
             
         last_line = np.zeros(( ysize if steep else xsize))
         
         feedback.setCurrentStep(3)
         if feedback.isCanceled():
             return {}
-
+        
       # 4 -----   LOOP THOUGH DATA CHUNKS AND CALCULATE -----------------
         counter = 0   
         for mx_view_in, gdal_coords, mx_view_out, gdal_put in window_loop ( 
@@ -257,34 +262,38 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
             axis = not steep, 
             reverse = rev_x if steep else rev_y,
             overlap= 0,
-            offset = -1) :
+            offset = 0) :
       
             dem.rst.ReadAsArray(*gdal_coords, mx_z[mx_view_in])
                 
-            # should handle better NoData !!
+            # should handle better NoData !! ==> FMAX
             # nans will destroy the accumulation sequence
-            mask = mx_z == dem.nodata
-            mx_z[mask]= -9999        
+            #mask = mx_z == dem.nodata
+            #mx_z[mask]= -9999        
        
             mx_temp[src] = mx_z + off
                         
             mx_temp[f] += -last_line # shadows have negative values, so *-1   
         
     	    # accumulate maximum shadow depths
-            mx_temp -= np.maximum.accumulate(mx_temp, axis= axis)
-	
-            # first line has the shadow of zero depth (nothing to accum), so copy from previous chunk
+            #mx_temp -= np.maximum.accumulate(mx_temp, axis= axis)
+            #FMAX : doesn't care about nans :)
+            mx_temp -= np.fmax.accumulate(mx_temp, axis= axis)
+            
+            
+                     # first line has the shadow of zero depth (nothing to accum), so copy from previous chunk
             mx_temp[f] = last_line 
             
             last_line [:] = mx_temp[l ] # save for later
 
             out = mx_temp[src] 
             
-            if smooth: out = filter3(out)
+            if smooth:   
+                out = filter3(out[mx_view_out])
                 
-            out[mask]=np.nan 
-            
-            
+            #out[mask]=np.nan ==>OK with nans
+    
+           
             dem.add_to_buffer(out[mx_view_out], gdal_put,
                               automatic_save = False ) # auto save - doesn't work with reverse reading
 
