@@ -10,7 +10,7 @@ The algorithm for relief shading is available in the official QGIS plugin reposi
 The tool will be available in the top level of the QGIS processing toolbox as a separate provider.
 
 If the standard installation does not work, the plugin can be downloaded for the repository (above) and installed manually: 
-First you need to locate your QGIS plugins folder. On Windows it would be ‘C:\users\username\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins’ (or just do a file search for ‘QGIS3’ …)
+First you need to locate your QGIS plugins folder. On Windows it would be `C:\users\username\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins` (or just do a file search for ‘QGIS3’ …)
 
 Plugin code can then be extracted in a new folder inside the plugins folder (you should name the folder TerrainShading). Take care that the code is not inside a subfolder - the folder structure should be like this:
 
