@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
 
-# ============== TODO : NO DATA handling ============================
-# - big ugly borders around no data : remove 
-
 #TODO : relative slope / relmative hillshade ==> in a radius
 """
     
