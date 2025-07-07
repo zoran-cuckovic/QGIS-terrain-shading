@@ -183,7 +183,7 @@ class NodataAlgorithm(QgsProcessingAlgorithm):
         h = ( """
             
              Interpolates nasty no-data values. (Same algorithm as GDAL)
-             To fill-in woth a FLAT VALUE (eg. 0 = sea), use Raster tools - Fill Nodata.
+             To fill-in with a FLAT VALUE (eg. 0 = sea), use Raster tools - Fill Nodata.
 
 	    If you find this plugin useful, consider to : 
              <a href='https://ko-fi.com/D1D41HYSW' target='_blank'><img height='30' style='border:0px;height:36px;' src='%s/help/kofi2.webp' /></a>
