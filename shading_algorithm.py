@@ -29,7 +29,9 @@ __copyright__ = '(C) 2019 by Zoran Čučković'
 
 from os import sys, path
 
-from PyQt5.QtCore import QCoreApplication
+try : from PyQt5.QtCore import QCoreApplication
+except ImportError: from PyQt6.QtCore import QCoreApplication
+
 from qgis.core import (QgsProcessing,
                        QgsProcessingException,
                        QgsProcessingAlgorithm,
@@ -91,7 +93,7 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterNumber(
             self.DIRECTION,
             self.tr('Sun direction (0 to 360°)'),
-            QgsProcessingParameterNumber.Double,
+            QgsProcessingParameterNumber.Integer,
             defaultValue = 315, minValue= 0, maxValue= 360))
             
         self.addParameter(QgsProcessingParameterNumber(
@@ -187,7 +189,7 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
         c = (np.arange(1, chunk) * slope) % 1 # %1 to get decimals only
         c[c>0.5] -= 1
         # this is not ideal : we cannot predict where it would stop
-        chunk -= np.argmin(np.round(abs(c), decimals = 2)[::-1])
+        chunk -= np.argmin(np.round(abs(c), decimals = 2)[::-1]) +1
         
         feedback.setCurrentStep(2)
         if feedback.isCanceled():
@@ -200,7 +202,7 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
         
         chunk_slice = (ysize, chunk) if steep else ( chunk, xsize)
         indices_y, indices_x = np.indices(chunk_slice)
-        mx_z = np.zeros( chunk_slice); mx_z[:] = -99999
+        mx_z = np.zeros( chunk_slice); mx_z[:] = -999999
             
         # this is all upside down ...
         rev_y= 90 <= direction <= 270 
@@ -262,14 +264,14 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
             axis = not steep, 
             reverse = rev_x if steep else rev_y,
             overlap= 0,
-            offset = 0) :
+            offset = -1) :
       
             dem.rst.ReadAsArray(*gdal_coords, mx_z[mx_view_in])
                 
             # should handle better NoData !! ==> test FMAX
             # nans will destroy the accumulation sequence
             mask = mx_z == dem.nodata
-            mx_z[mask]= -9999        
+            mx_z[mask]= -999999        
        
             mx_temp[src] = mx_z + off
                         
@@ -288,7 +290,7 @@ class DemShadingAlgorithm(QgsProcessingAlgorithm):
             out = mx_temp[src] 
             
             if smooth:   
-                out = filter3(out)
+                out[mx_view_out] = filter3(out[mx_view_out])
             
             #remove noData shadows    
             out[mask]=np.nan   
