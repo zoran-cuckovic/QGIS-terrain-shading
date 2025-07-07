@@ -34,7 +34,8 @@ from qgis.core import QgsProcessingProvider
 from processing.core.ProcessingConfig import Setting, ProcessingConfig
 
 from os import path
-from PyQt5.QtGui import QIcon
+try: from PyQt5.QtGui import QIcon
+except : from PyQt6.QtGui import QIcon
 
 from .shading_algorithm import DemShadingAlgorithm
 from .occlusion_algorithm import OcclusionAlgorithm
@@ -42,6 +43,7 @@ from .tpi_algorithm import TpiAlgorithm
 from .hillshade_algorithm import HillshadeAlgorithm
 from .texture_algorithm import TextureAlgorithm
 from .toposhade_algorithm import ToposhadeAlgorithm
+from .fill_nodata import NodataAlgorithm
 
 
 class DemShadingProvider(QgsProcessingProvider):
@@ -94,8 +96,8 @@ class DemShadingProvider(QgsProcessingProvider):
         
                 # Load algorithms
         alglist =[DemShadingAlgorithm(),  HillshadeAlgorithm(),
-                  OcclusionAlgorithm(),  TpiAlgorithm(),
-	               TextureAlgorithm(), ToposhadeAlgorithm()]
+              OcclusionAlgorithm(),  TpiAlgorithm(),
+            TextureAlgorithm(), ToposhadeAlgorithm(), NodataAlgorithm()]
         
         if self.isActive():
             for alg in alglist: self.addAlgorithm( alg )
