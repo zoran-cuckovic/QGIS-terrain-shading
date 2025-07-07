@@ -203,3 +203,53 @@ def TPI (dem_class, mode, radius, exclude = 0,
         dem.add_to_buffer(out[mx_view_out], gdal_put)
         
     return 1 #should return the file name... 
+
+# TODO FOR SHADOWS
+def shear_matrix_projection(matrix, azimuth, steep, pixel_size, tilt):
+    """
+    Projects a 2D matrix into a sheared space according to azimuth angle.
+    
+    Parameters:
+    - matrix: 2D input array (e.g., elevation)
+    - azimuth: direction of light or slope in degrees (0° = North, 90° = East)
+    - steep: if True, apply shearing in the vertical direction; else horizontal
+    - pixel_size: real-world size of one pixel
+    - tilt: scaling factor for projection
+    """
+    H, W = matrix.shape
+
+    # Grid of coordinates
+    y, x = np.meshgrid(np.arange(H), np.arange(W), indexing='ij')
+    coords = np.stack([x.ravel(), y.ravel()], axis=0)  # shape: (2, N)
+
+    # Convert azimuth to radians, relative to image axes (0° = North, 90° = East)
+    azimuth_rad = np.radians(azimuth)
+    dx = np.cos(azimuth_rad)  # x-component of light direction
+    dy = np.sin(azimuth_rad)  # y-component of light direction
+
+    # Build shear matrix based on azimuth and steepness
+    if steep:
+        shear_matrix = np.array([
+            [1, dx],
+            [0, 1]
+        ])
+    else:
+        shear_matrix = np.array([
+            [1, 0],
+            [dy, 1]
+        ])
+
+    # Apply shear transformation
+    sheared_coords = shear_matrix @ coords
+    sheared_x = np.round(sheared_coords[0]).astype(int).reshape(H, W)
+    sheared_y = np.round(sheared_coords[1]).astype(int).reshape(H, W)
+
+    # Calculate projected offset distance
+    distance = (x + y) * pixel_size * np.cos(azimuth_rad) * tilt
+
+    # Preallocate the sheared matrix
+    out_height = sheared_y.max() + 1
+    out_width = sheared_x.max() + 1
+    mx_temp = np.zeros((out_height, out_width))
+
+    return sheared_x, sheared_y, distance, mx_temp
