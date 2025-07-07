@@ -227,12 +227,10 @@ class ToposhadeAlgorithm(QgsProcessingAlgorithm):
             <b>Input</b> should be an elevation model in raster format. 
             
             <b>Radius</b> defines the search radius (in pixels).
-
-            There are 3 <b>analysis types</b>: 1) standard TPI, 2) distance weighted and 3) height weighted. Weighted options use elevation point distance or height discrepancy as weighting factor.   
-            
-            <b>Center of mass</b> : normally, when two altitudes are equal, their center of mass is precisely at half distance. Here, we can force this center to move (offset distance and azimuth).
-            
-            <b>Denoise</b> apply a smoothing filter. 
+	    
+           <b>Shade strength</b> describes the ratio between altitude and slope in the final output (more slope: stronger shade).
+	   
+           <b>Denoise</b> applies noise reduction filters.
             
              For more information, check <a href = "https://landscapearchaeology.org/qgis-terrain-shading/" >the manual</a>.
             
