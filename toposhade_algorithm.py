@@ -30,7 +30,9 @@ __copyright__ = '(C) 2020 by Zoran Čučković'
 
 from os import sys, path
 
-from PyQt5.QtCore import QCoreApplication
+try : from PyQt5.QtCore import QCoreApplication
+except ImportError: from PyQt6.QtCore import QCoreApplication
+
 from qgis.core import (QgsProcessing,
                        QgsProcessingException,
                        QgsProcessingAlgorithm,
@@ -74,11 +76,11 @@ class ToposhadeAlgorithm(QgsProcessingAlgorithm):
     RADIUS= 'RADIUS'
     DENOISE = 'DENOISE'
     ANALYSIS_TYPE='ANALYSIS_TYPE'
-   # STRENGTH = 'STRENGTH'
+    STRENGTH = 'STRENGTH'
     OFFSET_AZIMUTH= 'OFFSET_AZIMUTH'
     OUTPUT = 'OUTPUT'
 
- #   SHADE_TYPES=['More topography', 'Medium', 'More shadows']
+    SHADE_TYPES=['Light', 'Medium', 'Strong']
     ANALYSIS_TYPES = ['Simple',  'Distance weighted', "Inverse dist. weighted", 'Height weighted']
     DENOISE_TYPES= ['None', 'Mean', 'Median', 'Mean and median']
     
@@ -117,11 +119,11 @@ class ToposhadeAlgorithm(QgsProcessingAlgorithm):
             defaultValue=315, minValue=0, maxValue=360))
         
              
-        # self.addParameter(QgsProcessingParameterEnum (
-        #     self.STRENGTH,
-        #     self.tr('Shade strength'),
-        #     self.SHADE_TYPES,
-        #     defaultValue=1))
+        self.addParameter(QgsProcessingParameterEnum (
+             self.STRENGTH,
+           self.tr('Shade strength'),
+            self.SHADE_TYPES,
+            defaultValue=1))
         
         
         self.addParameter(QgsProcessingParameterEnum(
@@ -144,14 +146,14 @@ class ToposhadeAlgorithm(QgsProcessingAlgorithm):
         
         radius = self.parameterAsInt(parameters,self.RADIUS, context)
         
-       # mode = self.parameterAsInt(parameters,self.ANALYSIS_TYPE, context)
+        strength = self.parameterAsInt(parameters,self.STRENGTH, context)
 
         denoise = self.parameterAsInt(parameters,self.DENOISE, context) 
         
         
-        # if strength == 0 : offset_dist = radius//2
-        # elif strength == 1 : offset_dist = radius//1.5
-        # else: offset_dist = radius-1
+        if strength == 0 : offset_dist = radius//1.5
+        elif strength == 1 : offset_dist = radius//1.25
+        else: offset_dist = radius
         
         
         offset_azimuth = self.parameterAsDouble(parameters,self.OFFSET_AZIMUTH, context)
@@ -166,7 +168,7 @@ class ToposhadeAlgorithm(QgsProcessingAlgorithm):
         dem.set_output(self.output_model) 
             
         OK = TPI(dem_class=dem, mode=0, radius=radius,
-                 offset_dist=radius-1, 
+                 offset_dist=offset_dist, 
                  offset_azimuth=offset_azimuth,
                  denoise = denoise,
                  feedback=feedback)
