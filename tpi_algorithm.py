@@ -30,7 +30,9 @@ __copyright__ = '(C) 2020 by Zoran Čučković'
 
 from os import sys, path
 
-from PyQt5.QtCore import QCoreApplication
+try : from PyQt5.QtCore import QCoreApplication
+except ImportError: from PyQt6.QtCore import QCoreApplication
+
 from qgis.core import (QgsProcessing,
                        QgsProcessingException,
                        QgsProcessingAlgorithm,
