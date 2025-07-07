@@ -56,10 +56,33 @@ def visits_matrix(matrix_shape, radius,
 
 def TPI (dem_class, mode, radius, exclude = 0,
          offset_dist=0, offset_azimuth=0, denoise=None, feedback=None):
-    
-    #♦ !!!! TODO NODATA !!!!!        
-           # nodata = dem.GetRasterBand(1).GetNoDataValue()
-    
+    """
+    Compute Topographic Position Index (TPI) from a DEM.
+
+    Parameters:
+        dem_class: object
+            A DEM wrapper with raster access and chunking (expects .rst, .xsize, .ysize, etc.)
+        mode: int
+            Weighting mode:
+              0 = uniform
+              1 = distance weighted
+              2 = inverse distance
+              3 = height-difference weighted
+        radius: int
+            Radius of neighborhood
+        exclude: int, optional NOT USED !
+            Exclusion radius around the central pixel
+        offset_dist: float, optional
+            Distance for directional offset
+        offset_azimuth: float, optional
+            Azimuth in degrees (clockwise from north)
+        denoise: int or None, optional
+            Denoising option: 
+              1 or 3 = star shape
+              2 = median filter
+        feedback: object or None, optional
+            QGIS-style progress object with .setProgress() and .isCanceled()
+    """
     
     dem = dem_class
     
@@ -67,10 +90,10 @@ def TPI (dem_class, mode, radius, exclude = 0,
     # is organised in corresopndance to numpy matrix ordering (y first and descending). 
     offset_azimuth = 360 - offset_azimuth
          # decompose angle and distance to pixel coords
-    offset_x = round(offset_dist * np.sin(np.radians(offset_azimuth)))
-    offset_y = round(offset_dist * np.cos(np.radians(offset_azimuth)))
-    offset_x_diag = round(offset_dist * np.sin(np.radians(offset_azimuth - 45)))
-    offset_y_diag = round(offset_dist * np.cos(np.radians(offset_azimuth - 45)))
+    offset_x = offset_dist * np.sin(np.radians(offset_azimuth))
+    offset_y = offset_dist * np.cos(np.radians(offset_azimuth))
+    offset_x_diag = offset_dist * np.sin(np.radians(offset_azimuth - 45))
+    offset_y_diag = offset_dist * np.cos(np.radians(offset_azimuth - 45))
    
     
    # TODO
@@ -120,7 +143,6 @@ def TPI (dem_class, mode, radius, exclude = 0,
     else : 
         mx_cnt =  np.zeros(mx_z.shape)
 
-
     
     counter = 0
   
@@ -130,7 +152,7 @@ def TPI (dem_class, mode, radius, exclude = 0,
         chunk = dem.chunk_x,
         overlap = overlap) :
         
-        dem.rst.ReadAsArray(*gdal_take, mx_z[mx_view_in]).astype(float)
+        mx_z[mx_view_in] = dem.rst.ReadAsArray(*gdal_take).astype(float)
 
         mx_a[:]= 0
         if not precalc: mx_cnt[:]=0   
