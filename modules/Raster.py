@@ -206,9 +206,19 @@ class Raster:
          # Create immediately the output. 
         driver = gdal.GetDriverByName('GTiff')
 
+        options = ['COMPRESS=LZW' if compression else '']
+
+        if self.xsize * self.ysize > 5e8 : 
+        
+            options += [
+                    'BIGTIFF=YES',          # <-- this is the key!
+                    'TILED=YES',            # recommended for large rasters
+                    'BLOCKXSIZE=256',       # optional, for better I/O
+                    'BLOCKYSIZE=256'
+                ]
+      
         ds = driver.Create(file_name, self.xsize, self.ysize, 
-                           1, self.data_format, 
-                           ['COMPRESS=LZW' if compression else ''])
+                           1, self.data_format, options)
 
         ds.SetProjection(self.rst.GetProjection())
         ds.SetGeoTransform(self.rst.GetGeoTransform())
