@@ -109,7 +109,7 @@ class ToposhadeAlgorithm(QgsProcessingAlgorithm):
             self.RADIUS,
             self.tr('Radius in pixels'),
             QgsProcessingParameterNumber.Integer ,
-            defaultValue=5))
+            defaultValue=3))
    
         
         self.addParameter(QgsProcessingParameterNumber(
