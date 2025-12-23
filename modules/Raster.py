@@ -145,7 +145,8 @@ class Raster:
     """         
     def take (self, gdal_take, matrix_in, fill_nodata=None, data_type = float):
         
-        self.rst.ReadAsArray(*gdal_take, matrix_in).astype(data_type)
+        bd = self.rst.GetRasterBand(1)
+        bd.ReadAsArray(*gdal_take, matrix_in).astype(data_type)
         
         if not fill_nodata is None: 
             
