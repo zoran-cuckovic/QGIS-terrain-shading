@@ -137,6 +137,7 @@ def TPI (dem_class, mode, radius, exclude = 0,
     if precalc: 
         mx_cnt =  visits_matrix (mx_z.shape,radius,
                                 diagonals = denoise in [1, 3], 
+                                diagonal_weight = w_diag,
                                 distance_weighted = mode==1,
                                 exclusion = exclude)
         
@@ -275,3 +276,4 @@ def shear_matrix_projection(matrix, azimuth, steep, pixel_size, tilt):
     mx_temp = np.zeros((out_height, out_width))
 
     return sheared_x, sheared_y, distance, mx_temp
+
