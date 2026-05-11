@@ -25,9 +25,8 @@ __date__ = '2020-02-05'
 __copyright__ = '(C) 2020 by Zoran Čučković'
 
 from os import sys, path
-
 try : from PyQt5.QtCore import QCoreApplication
-except ImportError: from PyQt6.QtCore import QCoreApplication
+except : from PyQt6.QtCore import QCoreApplication
 
 from qgis.core import (QgsProcessing,
                        

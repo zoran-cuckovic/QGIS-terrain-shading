@@ -169,7 +169,7 @@ class ToposhadeAlgorithm(QgsProcessingAlgorithm):
             
         OK = TPI(dem_class=dem, mode=0, radius=radius,
                  offset_dist=offset_dist, 
-                 offset_azimuth=offset_azimuth,
+                 offset_azimuths=offset_azimuth,
                  denoise = denoise,
                  feedback=feedback)
         
@@ -188,7 +188,7 @@ class ToposhadeAlgorithm(QgsProcessingAlgorithm):
         ce = QgsContrastEnhancement(provider.dataType(1))
         ce.setContrastEnhancementAlgorithm(QgsContrastEnhancement.StretchToMinimumMaximum)
         
-        ce.setMinimumValue(mean - 3*sd)
+        ce.setMinimumValue(mean - 2*sd)
         ce.setMaximumValue(mean + 1.5* sd)
 
         rnd.setContrastEnhancement(ce)

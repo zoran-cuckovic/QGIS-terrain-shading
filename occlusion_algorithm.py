@@ -23,10 +23,11 @@ __date__ = '2020-02-05'
 __copyright__ = '(C) 2020 by Zoran Čučković'
 # This will get replaced with a git SHA1 when you do a git archive
 __revision__ = '$Format:%H$'
-from os import sys, path
 
 try : from PyQt5.QtCore import QCoreApplication
 except ImportError: from PyQt6.QtCore import QCoreApplication
+
+from os import path
 
 from qgis.core import (QgsProcessing,
                        QgsProcessingException,
@@ -41,15 +42,10 @@ from qgis.core import (QgsProcessing,
                        QgsSingleBandGrayRenderer,
                        QgsContrastEnhancement
                         )
-from processing.core.ProcessingConfig import ProcessingConfig
-try:
-    from osgeo import gdal
-except ImportError:
-    import gdal
-import numpy as np
+
 from .modules import Raster as rs
-from .modules.helpers import view, window_loop, filter3, median_filter
-from qgis.core import QgsMessageLog # for testing
+from .modules.shaders import occlusion
+
 class OcclusionAlgorithm(QgsProcessingAlgorithm):
     """
     This algorithm simulates ambient lighting over a raster DEM (in input). 
@@ -63,6 +59,7 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
     INVERT = 'INVERT'
     ANALYSIS_TYPE='ANALYSIS_TYPE'
     SYMMETRIC='SYMMETRIC'
+    CONTRAST = 'CONTRAST'
     #RANGE = 'RANGE'
     OUTPUT = 'OUTPUT'
     ANALYSIS_TYPES = ['Sky-view','Openness']
@@ -88,7 +85,7 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterBoolean(
             self.SYMMETRIC,
             self.tr('Symmetric angles'),
-            False, False)) 
+            False)) 
         """
         self.addParameter(QgsProcessingParameterBoolean(
             self.RANGE,
@@ -98,7 +95,7 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterBoolean(
             self.INVERT,
             self.tr('Inverted DEM'),
-            False, False)) 
+            False)) 
                     
         self.addParameter(QgsProcessingParameterNumber(
             self.RADIUS,
@@ -111,6 +108,11 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
             self.tr('Denoise'),
             self.DENOISE_TYPES,
             defaultValue=0)) 
+        
+        self.addParameter(QgsProcessingParameterBoolean(
+            self.CONTRAST,
+            self.tr('Contrast stretch'),
+            False)) 
         
         self.addParameter(
             QgsProcessingParameterRasterDestination(
@@ -135,9 +137,7 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
         # 0 : sky view        
         openness = self.parameterAsInt(parameters,self.ANALYSIS_TYPE, context)
         symmetric = self.parameterAsInt(parameters,self.SYMMETRIC, context)
-        
-        # STILL TESTING
-        difference = None #self.parameterAsInt(parameters,self.RANGE, context)
+        contrast = self.parameterAsInt(parameters,self.CONTRAST, context)
         
         dem = rs.Raster(elevation_model)
         
@@ -146,109 +146,8 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
 
         dem.set_output(self.output_model)
                                
-        overlap = radius if not denoise else radius +1
-             
-        chunk_slice = (dem.ysize, dem.chunk_x + 2 * overlap)
-                        
-        mx_z = np.zeros(chunk_slice)
-        mx_a = np.zeros(mx_z.shape)
-      
-        if symmetric: mx_b = mx_a
-        else: mx_b = np.zeros(mx_z.shape)
-        
-        mx_a = np.zeros(mx_z.shape + ((radius ,) ))
-        mx_b = np.zeros(mx_z.shape + ((radius ,) ))
-        
-        out =  np.zeros(mx_z.shape)
-                
-        # intialise the count of lines per pixel
-        mx_cnt = np.ones(mx_z.shape)
-        # set borders first  
-        mx_cnt[:]= 5 if not symmetric else 3
-        # main area : 8 lines per pixel (or 4 if symmetric algo)
-        mx_cnt[1:-1, 1:-1] = 8 if not symmetric else 4
-        # corners
-        for v in [(0,0),(-1,-1),(0,-1), (-1,0)]: mx_cnt[v] = 3
-               
-        counter = 0
-            
-        for mx_view_in, gdal_take, mx_view_out, gdal_put in window_loop ( 
-            shape = (dem.xsize, dem.ysize), 
-            chunk = dem.chunk_x,
-            overlap = overlap) :
-            
-            if counter : out[:] = 0 # reset
-            
-            dem.rst.ReadAsArray(*gdal_take, mx_z[mx_view_in]).astype(float)
-            # NODATA : TODO !
-            # mx_z[mx_z == nodata] = 0
-            
-            if invert : mx_z *= -1
-            
-            if denoise in [2, 3] : mx_z = median_filter(mx_z, radius= 3)
-            if denoise in [1, 3] : mx_z = filter3(mx_z) # after the median filter
-            
-
-            # 8 standard lines, we use symmetry to optimise
-            for dy, dx in [(0,1), (1,0), (1, -1), (1,1)]:
-                
-                if dx * dy : pix = np.sqrt( dem.pix_y**2 + dem.pix_x**2)
-                else : pix = dem.pix_y if dx else dem.pix_x #swapped x, y
-                
-                for r in range (1, radius + 1): 
-                    # we could probably sample over radius, not all pixels are needed...
-                                                 
-                    view_in, view_out = view(r * dx, r * dy, mx_z[mx_view_in].shape)
-
-                    angles = mx_z[view_in] - mx_z[view_out]
-                                                   # diagonals         
-                    dist = r * pix
-                    
-                    angles /= dist 
-     
-                    mx_a[view_out][:,:,r-1] = angles
-                    mx_b[view_in][:,:,r-1] = -angles
-                    
-                    # a patch for irregular pixels : take care of the length of the LOS
-                    if dist > min(dem.pix_x * radius, dem.pix_y * radius) : break
-               
-                if not openness:  # sky view factor - remove negative angles
-                    mx_a [mx_a < 0] = 0; mx_b[mx_b < 0] = 0
-                 
-                max_a = np.max(mx_a, axis = 2)
-                max_b = np.max(mx_b, axis = 2)
-                
-                if difference : 
-                    max_a -= np.min(mx_a, axis = 2)
-                    max_b -= np.min(mx_b, axis = 2)
-                              
-                # average of angles: see Kokalj et al. 2011
-                # these operations are costly, however ...
-                if symmetric : 
-                    # find the highest angle for each *pair* of LOS
-                    np.maximum(max_a, max_b, out=max_a)
-                    out += np.sin(np.arctan(max_a) )
-                else: 
-                    out += np.sin(np.arctan(max_a)) 
-                    out += np.sin(np.arctan(max_b)) 
-                
-                mx_a[:] = 0 ; mx_b[:] = 0 # clean-up, remove old values 
-
-                counter += 1
-                
-                feedback.setProgress(100 * dem.chunk_x * (counter/4) /  dem.xsize)
-                if feedback.isCanceled(): return {}
-            
-            # this is a patch : last chunk is often spilling outside raster edge 
-            # so, move the edge values to match raster edge
-            end = gdal_take[2]           
-            if end + gdal_take[0] == dem.xsize : 
-                mx_cnt[:, end-1: end] = mx_cnt[:, -1:] 
-            
-            out /= mx_cnt
-            out = 1 - out
-
-            dem.add_to_buffer(out[mx_view_out], gdal_put)
+        success = occlusion(dem, radius, openness, denoise , 
+                       invert, symmetric, contrast, feedback )
             
         return {self.OUTPUT: self.output_model}
 
@@ -264,9 +163,9 @@ class OcclusionAlgorithm(QgsProcessingAlgorithm):
         ce = QgsContrastEnhancement(provider.dataType(1))
         ce.setContrastEnhancementAlgorithm(QgsContrastEnhancement.StretchToMinimumMaximum)
        
-        ce.setMinimumValue(mean-3*sd)
-        ce.setMaximumValue( mean+2*sd)
-
+        ce.setMinimumValue(max(0, mean-3*sd))
+        ce.setMaximumValue(min(1, mean+2*sd))
+        
         rnd.setContrastEnhancement(ce)
 
         output.setRenderer(rnd)

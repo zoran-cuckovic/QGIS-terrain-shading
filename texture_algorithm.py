@@ -46,15 +46,11 @@ from qgis.core import (QgsProcessing,
 
 from processing.core.ProcessingConfig import ProcessingConfig
 
-try:
-    from osgeo import gdal
-except ImportError:
-    import gdal
 
 import numpy as np
 
 from .modules import Raster as rs
-from .modules.helpers import window_loop, nextprod
+from .modules.shaders import texture
 
 
 from qgis.core import QgsMessageLog # for testing
@@ -120,74 +116,10 @@ class TextureAlgorithm(QgsProcessingAlgorithm):
        
         alpha =self.parameterAsDouble(parameters,self.ALPHA, context)
         
-                
         dem = rs.Raster(elevation_model)
+        dem.set_output(self.output_model) 
+        result = texture( dem, alpha, feedback )
         
-        err, fatal = dem.verify_raster()
-        if err: feedback.reportError(err, fatalError = fatal)
-        
-        dem.set_output(self.output_model ) 
-        
-      #  dem.texture(alpha, feedback_handle=feedback)
-        
-        chunk_slice_x = (dem.ysize, dem.chunk_x ) 
-        chunk_slice_y = (dem.chunk_y, dem.xsize) 
-              
-        # define empty matrices to hold data : faster
-        mx_z_x = np.zeros( chunk_slice_x)
-        mx_z_y = np.zeros( chunk_slice_y)
-        
-   
-   
-        Ny = nextprod([2, 3, 5, 7], dem.ysize) 
-        Nx = nextprod([2, 3, 5, 7], dem.xsize)
-        fy = np.fft.rfftfreq(Ny)[:, np.newaxis].astype(mx_z_y.dtype)
-        fx = np.fft.rfftfreq(Nx)[np.newaxis, :].astype(mx_z_x.dtype)
-        
-        # this is not the correct formula ; orginally :
-        # H = (fy**2 + fx**2 ) ** (alpha / 2.0)
-        # when alpha = 1 : the result is identical (i.e. pure laplacian filter)
-        Hy, Hx = ((fy** 2) ** alpha)  , ((fx ** 2) ** alpha)
-                     
-        counter = 0
-        
-        # Break the operation to two axes (x, y) : this works fine for laplacian filter,
-        # but it does not quite work for the *fractional* laplacian (here fraction = alpha)
-        # the result is only very slightly degraded for alpha = 0.5 ...
-        for axis in [0,1]:
-            if axis:
-                chunk = dem.chunk_y
-                mx_z = mx_z_y
-                N, H = Nx, Hx # bit messy x, y swaps..
-            else: 
-                chunk = dem.chunk_x
-                mx_z = mx_z_x
-                N, H = Ny, Hy 
-       
-            for mx_view_in, gdal_take, mx_view_out, gdal_put in window_loop ( 
-                    shape = (dem.xsize, dem.ysize), 
-                    chunk = chunk,
-                    axis = axis) :
-                
-                #dem.rst.ReadAsArray(*gdal_take, mx_z[mx_view_in])
-                dem.take(gdal_take, mx_z[mx_view_in], fill_nodata = 0)
-                        
-                r = np.fft.rfft( mx_z, N, axis=axis) * H
-                r = np.fft.irfft(r, axis=axis)
-                
-                # Return the same size as input
-                out = r [:mx_z.shape[0], :mx_z.shape[1]]
-                
-                # axis = 1 : second round, add old data
-                dem.add_to_buffer(out[mx_view_out], gdal_put, 
-                                   mode = rs.ADD if axis else rs.DUMP, 
-                                   automatic_save = axis)
-          
-                counter += 1
-                feedback.setProgress(100 * chunk * (counter / (dem.xsize + dem.ysize)))
-                if feedback.isCanceled(): return{}
-        
-#        
         return {self.OUTPUT: self.output_model}
 
     def postProcessAlgorithm(self, context, feedback):

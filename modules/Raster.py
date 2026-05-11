@@ -156,15 +156,22 @@ class Raster:
             matrix_in[matrix_in < -9990] = fill_nodata
          
         return matrix_in
+    
+    
+    def read_entire (self): return self.rst.ReadAsArray()
         
-    def add_to_buffer(self, matrix, gdal_put, 
+    def add_to_buffer(self, matrix, 
+                      gdal_put = None, 
                       mode = DUMP, 
-                      automatic_save = True):
+                      automatic_save = True, 
+                      band=1):
         """
         Save to buffered numpy array (or directly to disk if the array is too large)
         Attention : automatic save is executed when the end of raster is reached,
-        which does not work with reverse reading (back to front). Use write_output() to force saving.
+        which does not work with reverse reading (back to front). 
+        Use write_output() to force saving.
         """
+        if not gdal_put: gdal_put = [ 0, 0, *matrix.shape]
         
         x, y, x_off, y_off = gdal_put 
         try:
@@ -176,23 +183,23 @@ class Raster:
       
         except: 
            
-            bd = self.gdal_output.GetRasterBand(1)
+            bd = self.gdal_output.GetRasterBand(band)
             if mode == ADD: 
                 matrix += bd.ReadAsArray(*gdal_put)
                 
             bd.WriteArray(matrix, *gdal_put[:2])
             bd.FlushCache() # Important, otherwise it's not saving
-            
-        
-        
+
         if automatic_save and x + x_off == self.xsize and y + y_off == self.ysize :
-            self.write_output()   
+            self.write_output(band=band)   
 
     
     def set_output (self, file_name,
                      no_data = np.nan,
                      data_format_override = None,
-                     compression = True):
+                     compression = True,
+                     bands = 1, 
+                     leave_open = False):
         """
          Prepare output file and set number format. No saving is made at this stage.
          It vill provide a handle (self.gdal_output) which can be used to control writing to disk.
@@ -219,19 +226,23 @@ class Raster:
                 ]
       
         ds = driver.Create(file_name, self.xsize, self.ysize, 
-                           1, self.data_format, options)
+                           bands, self.data_format, options)
 
         ds.SetProjection(self.rst.GetProjection())
         ds.SetGeoTransform(self.rst.GetGeoTransform())
-
-        ds.GetRasterBand(1).SetNoDataValue(no_data)           
-        #ds.GetRasterBand(1).Fill(self.fill)
+        
+        for bd in range(bands):
+            ds.GetRasterBand(bd+1).SetNoDataValue(no_data) 
+                 
+            #ds.GetRasterBand(1).Fill(self.fill)
         
         self.gdal_output = ds    # a handle for adding data 
-        
-        
-    
-    def write_output(self):
+ 
+        # a hack to override write_output routine
+        # used for multi-band outputs
+        self.leave_open = leave_open
+           
+    def write_output(self, band = 1):
 
         if isinstance(self.buffer, np.ndarray): # buffered mode
 
@@ -244,11 +255,15 @@ class Raster:
                 if self.data_format == INT:  self.buffer *= 32767 
                 elif self.data_format == BYTE: self.buffer *= 255 
 
-            self.gdal_output.GetRasterBand(1).WriteArray(self.buffer)
+            self.gdal_output.GetRasterBand(band).WriteArray(self.buffer)
             
-        self.gdal_output = None # to save the raster (buffered or non-buffered)
+            # save immediately for single band outputs     
+        
+        if not self.leave_open: self.save_output()
             
-            
+       # setting the instance to None saves the output
+       # not really required with bd.FlushCache above
+    def save_output (self) :  self.gdal_output = None 
 
     def deg_to_m(self, diff_x, diff_y, latitude):
         """

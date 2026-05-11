@@ -44,6 +44,8 @@ from .hillshade_algorithm import HillshadeAlgorithm
 from .texture_algorithm import TextureAlgorithm
 from .toposhade_algorithm import ToposhadeAlgorithm
 from .fill_nodata import NodataAlgorithm
+from .toposhade_colour_algorithm import ToposhadeColourAlgorithm
+from .Colourmix_algorithm import ColourMix
 
 
 class DemShadingProvider(QgsProcessingProvider):
@@ -97,7 +99,9 @@ class DemShadingProvider(QgsProcessingProvider):
                 # Load algorithms
         alglist =[DemShadingAlgorithm(),  HillshadeAlgorithm(),
               OcclusionAlgorithm(),  TpiAlgorithm(),
-            TextureAlgorithm(), ToposhadeAlgorithm(), NodataAlgorithm()]
+            TextureAlgorithm(), ToposhadeAlgorithm(), NodataAlgorithm(),
+            ToposhadeColourAlgorithm()]
+        # TESTING ColourMix()
         
         if self.isActive():
             for alg in alglist: self.addAlgorithm( alg )

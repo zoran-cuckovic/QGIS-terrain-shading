@@ -9,7 +9,49 @@ import numpy as np
 from typing import List
 import math
 
+def tile_windows(matrix_shape, tile_size, overlap):
+    """ SQUARE windows /tiles """
+    ysize, xsize = matrix_shape
 
+    step = tile_size - 2 * overlap
+    # ix, iy are sequential numbers of tiles - not really used 
+    for iy, y0 in enumerate(range(0, ysize, step)):
+        for ix, x0 in enumerate(range(0, xsize, step)):
+
+            # Core region in global coordinates
+            x1 = min(x0 + step, xsize)
+            y1 = min(y0 + step, ysize)
+
+            # Expanded read region
+            rx0 = max(0, x0 - overlap)
+            ry0 = max(0, y0 - overlap)
+
+            rx1 = min(xsize, x1 + overlap)
+            ry1 = min(ysize, y1 + overlap)
+
+            # GDAL read window
+            read_win = (
+                rx0,
+                ry0,
+                rx1 - rx0,
+                ry1 - ry0,
+            )
+
+            # Core region INSIDE tile array
+            core = np.s_[
+                y0 - ry0 : y1 - ry0,
+                x0 - rx0 : x1 - rx0,
+            ]
+
+            # GDAL write window (global output position)
+            write_win = (
+                x0,
+                y0,
+                x1 - x0,
+                y1 - y0,
+            )
+
+            yield read_win, core, write_win, (iy, ix)
 
 def view (offset_y, offset_x, shape, step=1, edge=0):
     """            
@@ -260,3 +302,41 @@ def nextprod(a: List[int], x: int) -> int:
   return int(mx[-1] if mx[-1] < best else best)
 
 
+def hsv_to_rgb(h, s, v):
+    """
+    h, s, v: NumPy arrays (all normalized to [0,1])
+    returns: r, g, b arrays in [0,1]
+    """
+    h = (h % 1.0) * 6.0
+    i = np.floor(h).astype(int)
+    f = h - i
+
+    p = v * (1.0 - s)
+    q = v * (1.0 - f * s)
+    t = v * (1.0 - (1.0 - f) * s)
+
+    r = np.zeros_like(v)
+    g = np.zeros_like(v)
+    b = np.zeros_like(v)
+
+    i = i % 6
+
+    mask = i == 0
+    r[mask], g[mask], b[mask] = v[mask], t[mask], p[mask]
+
+    mask = i == 1
+    r[mask], g[mask], b[mask] = q[mask], v[mask], p[mask]
+
+    mask = i == 2
+    r[mask], g[mask], b[mask] = p[mask], v[mask], t[mask]
+
+    mask = i == 3
+    r[mask], g[mask], b[mask] = p[mask], q[mask], v[mask]
+
+    mask = i == 4
+    r[mask], g[mask], b[mask] = t[mask], p[mask], v[mask]
+
+    mask = i == 5
+    r[mask], g[mask], b[mask] = v[mask], p[mask], q[mask]
+
+    return r, g, b

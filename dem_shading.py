@@ -48,7 +48,7 @@ class DemShadingPlugin:
     def __init__(self, iface):
         
         self.iface = iface
-        self.provider = None
+        self.provider = DemShadingProvider()
         
        
 
