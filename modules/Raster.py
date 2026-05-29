@@ -104,7 +104,7 @@ class Raster:
         self.nodata = gdal_raster.GetRasterBand(1).GetNoDataValue()
 ##
 ##        data_type =  ..GetRasterBand(1).DataType
-        
+        self.num_bands = gdal_raster.RasterCount
    
         # set processing chunks and the buffer
         chunk = int(ProcessingConfig.getSetting('DATA_CHUNK')) * 1000000

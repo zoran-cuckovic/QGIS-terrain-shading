@@ -206,7 +206,8 @@ def TPI (dem_class, mode, radius, exclude = 0,
             chunk = dem.chunk_x,
             overlap = overlap) :
             
-            mx_z[mx_view_in] = dem.rst.ReadAsArray(*gdal_take).astype(float)
+            bd = dem.rst.GetRasterBand(1)
+            mx_z[mx_view_in] = bd.ReadAsArray(*gdal_take).astype(float)
 
             mx_a[:]= 0
             
@@ -397,7 +398,7 @@ def occlusion (dem_class, radius, openness = False, denoise= False ,
     return 1 #should return the file name... 
 
 def texture (dem_class, alpha, feedback=None ):
-  #  dem.texture(alpha, feedback_handle=feedback)
+  
     dem = dem_class  
     chunk_slice_x = (dem.ysize, dem.chunk_x ) 
     chunk_slice_y = (dem.chunk_y, dem.xsize) 
@@ -440,7 +441,7 @@ def texture (dem_class, alpha, feedback=None ):
             
             mx_z[mx_view_in] = dem.rst.ReadAsArray(*gdal_take).astype(float) 
             #dem.take(gdal_take, mx_z[mx_view_in], fill_nodata = 0)
-                        
+                                    
             r = np.fft.rfft(mx_z, N, axis=axis) * H
             r = np.fft.irfft(r, axis=axis)
             
@@ -456,6 +457,19 @@ def texture (dem_class, alpha, feedback=None ):
             if feedback:
                 feedback.setProgress(100 * chunk * (counter / (dem.xsize + dem.ysize)))
                 if feedback.isCanceled(): return{}
+                
+# TODO - DETREND ==> nmake edges match to remove shadows at the border
+# but this could introduce strips/seams...
+    #  dx = tile[:, -1] - tile[:, 0]
+    #  dy = tile[-1, :] - tile[0, :]
+
+    # xw = np.linspace(0, 1, tile.shape[1])
+    # yw = np.linspace(0, 1, tile.shape[0])
+
+    # corr_x = dx[:, None] * xw[None, :]
+    # corr_y = dy[None, :] * yw[:, None]
+
+    # tile2 = tile - corr_x - corr_y
         
 # FUTURE IMPROVEMENT - diagonal components (we only use x and y otherwise)
 
