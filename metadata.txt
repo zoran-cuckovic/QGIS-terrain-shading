@@ -2,10 +2,10 @@
 
 [general]
 name=Terrain Shading
-qgisMinimumVersion=3.0
+qgisMinimumVersion=4.0
 
 description=Shading algorithms for terrain analysis and visualisation.
-version=0.9.99
+version=1.0
 author=Zoran Čučković
 email=cuckovic.zoran@gmail.com
 

@@ -183,17 +183,25 @@ class ToposhadeColourAlgorithm(QgsProcessingAlgorithm):
         stats = provider.bandStatistics(1,QgsRasterBandStats.All,output.extent(),0)
         mean, sd = stats.mean, stats.stdDev
         
-        rnd = QgsMultiBandColorRenderer(provider, 1,2,3)
-        ce = QgsContrastEnhancement(provider.dataType(1))
-        ce.setContrastEnhancementAlgorithm(QgsContrastEnhancement.StretchToMinimumMaximum)
-        
-        ce.setMinimumValue(mean - 3*sd)
-        ce.setMaximumValue(mean + 1.5* sd)
+        renderer = QgsMultiBandColorRenderer(provider, 1, 2, 3)
 
-        rnd.setContrastEnhancement(ce)
-
-        output.setRenderer(rnd)
+        for band in [1, 2, 3]:
+            ce = QgsContrastEnhancement(provider.dataType(band))
+            ce.setContrastEnhancementAlgorithm(
+                QgsContrastEnhancement.StretchToMinimumMaximum
+            )
         
+            ce.setMinimumValue(mean -  sd)
+            ce.setMaximumValue(mean +  sd)
+        
+            if band == 1:
+                renderer.setRedContrastEnhancement(ce)
+            elif band == 2:
+                renderer.setGreenContrastEnhancement(ce)
+            elif band == 3:
+                renderer.setBlueContrastEnhancement(ce)
+        
+        output.setRenderer(renderer)
         output.triggerRepaint()
 
         return {self.OUTPUT: self.output_model}
@@ -214,6 +222,7 @@ class ToposhadeColourAlgorithm(QgsProcessingAlgorithm):
         user-visible display of the algorithm name.
         """
         return self.tr('Toposhade - coloured')
+   
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)
@@ -221,7 +230,7 @@ class ToposhadeColourAlgorithm(QgsProcessingAlgorithm):
     def shortHelpString(self):
         curr_dir = path.dirname(path.realpath(__file__))
         h = ( """
-             EXPERIMENTAL : three models are made for three colour bands (RGB).  
+             The output combines three visualisation models, made for three colour bands (RGB).  
              
             <b>Input</b> should be an elevation model in raster format. 
             

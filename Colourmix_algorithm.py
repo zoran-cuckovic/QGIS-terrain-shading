@@ -100,10 +100,20 @@ class ColourMix(QgsProcessingAlgorithm):
         l = rs.Raster(level)
         s = rs.Raster(saturation)
         
+        for dataset in(h, s, l): 
+            if dataset.num_bands > 1: 
+               layer_name = dataset.qrst.name()
+
+               err = (  f"\n ****** \n ERROR! \n"
+                    f"Raster '{layer_name}' should have only one band (grey) !")
+        
+               feedback.reportError(err, fatalError=True)
+               raise QgsProcessingException(err)
 
         h.set_output(self.output_model, bands = 3)
     
        # normalised 
+       # NOT GOOD : IN CHUNKS !!
         mx_h = h.read_entire() / h.max
         mx_l =  l.read_entire() / l.max  
         mx_s = s.read_entire() /s.max
@@ -135,6 +145,23 @@ class ColourMix(QgsProcessingAlgorithm):
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)
+    
+    def group(self):
+        """
+        Returns the name of the group this algorithm belongs to. This string
+        should be localised.
+        """
+        return self.tr(self.groupId())
+
+    def groupId(self):
+        """
+        Returns the unique ID of the group this algorithm belongs to. This
+        string should be fixed for the algorithm, and must not be localised.
+        The group id should be unique within each provider. Group id should
+        contain lowercase alphanumeric characters only and no spaces or other
+        formatting characters.
+        """
+        return 'Helpers'
 
     def shortHelpString(self):
         curr_dir = path.dirname(path.realpath(__file__))
