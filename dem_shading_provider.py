@@ -45,7 +45,7 @@ from .texture_algorithm import TextureAlgorithm
 from .toposhade_algorithm import ToposhadeAlgorithm
 from .fill_nodata import NodataAlgorithm
 from .toposhade_colour_algorithm import ToposhadeColourAlgorithm
-from .Colourmix_algorithm import ColourMix
+# from .colourmix_algorithm import ColourMix
 
 
 class DemShadingProvider(QgsProcessingProvider):
